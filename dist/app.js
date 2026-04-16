@@ -27,7 +27,7 @@ app.get('/', (req, res) => {
         environment: config_1.config.nodeEnv,
     });
 });
-app.use('/api/v1/auth', routes_1.default);
+app.use('/api/v1', routes_1.default);
 app.use(notFound_1.notFound);
 app.use(errorHandler_1.default);
 exports.default = app;
