@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 // ===================== ENUMS =====================
@@ -27,15 +27,12 @@ enum CertificationStatus {
   PENDING
   APPROVED
   REJECTED
-  EXPIRED
 }
 
 enum OrderStatus {
   PENDING
-  PROCESSING
   COMPLETED
   CANCELLED
-  REFUNDED
 }
 
 enum HealthStatus {
@@ -53,22 +50,6 @@ enum GrowthStage {
   HARVESTING
 }
 
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
-}
-
-enum NotificationType {
-  ORDER
-  RENTAL
-  PLANT
-  CERTIFICATION
-  SYSTEM
-  PROMOTION
-}
-
 // ===================== CORE MODELS =====================
 
 model User {
@@ -78,323 +59,201 @@ model User {
   password     String
   role         Role       @default(CUSTOMER)
   status       UserStatus @default(ACTIVE)
-  profileImage String?
   phoneNumber  String?
   address      String?
+  profileImage String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  deletedAt    DateTime? // Soft delete
+  deletedAt    DateTime?
 
   // Relations
   vendorProfile       VendorProfile?
   orders              Order[]
   communityPosts      CommunityPost[]
   plantTrackings      PlantTracking[]
-  rentals             RentalBooking[]
-  communityComments   CommunityComment[]
+  rentalBookings      RentalBooking[]
   refreshTokens       RefreshToken[]
-  notifications       Notification[]
-  auditLogs           AuditLog[]
-  vendorApprovals     VendorApprovalRequest[]
   passwordResetTokens PasswordResetToken[]
-  reviews             Review[]
-  wishlists           Wishlist[]
-  cart                Cart?
-  couponUsages        CouponUsage[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
 
   @@index([email])
   @@index([role])
   @@index([status])
-  @@index([deletedAt])
-  @@index([createdAt])
 }
 
 model VendorProfile {
   id                  Int                 @id @default(autoincrement())
   userId              Int                 @unique
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   farmName            String
-  farmDescription     String?
-  farmLocation        String
   certificationStatus CertificationStatus @default(PENDING)
-  totalRating         Float               @default(0)
-  ratingCount         Int                 @default(0)
-  isVerified          Boolean             @default(false)
-  approvalStatus      String              @default("PENDING") // PENDING, APPROVED, REJECTED, SUSPENDED
-  approvedBy          Int?
-  approvedAt          DateTime?
-  rejectionReason     String?
-  businessLicense     String?
-  taxId               String?
-  bankAccountName     String?
-  bankAccountNumber   String?
-  bankName            String?
+  farmLocation        String
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
   // Relations
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   produce            Produce[]
   rentalSpaces       RentalSpace[]
-  sustainabilityCert SustainabilityCert?
   orders             Order[]
-  approvalRequests   VendorApprovalRequest[]
-  locations          Location[]
-  reviews            Review[]
+  sustainabilityCert SustainabilityCert?
 
   @@index([certificationStatus])
-  @@index([isVerified])
-  @@index([approvalStatus])
   @@index([userId])
 }
 
 model Produce {
   id                  Int                 @id @default(autoincrement())
   vendorId            Int
-  vendor              VendorProfile       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   name                String
   description         String
   price               Float
   category            String
-  subCategory         String?
-  images              String[]
   certificationStatus CertificationStatus @default(PENDING)
   availableQuantity   Int
-  unit                String              @default("kg")
-  organicLabel        Boolean             @default(false)
-  harvestDate         DateTime?
-  expiryDate          DateTime?
-  isActive            Boolean             @default(true)
-  verifiedBy          Int?
-  verifiedAt          DateTime?
-  verificationNotes   String?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
   // Relations
-  orders    Order[]
-  wishlists Wishlist[]
-  cartItems CartItem[]
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  orders Order[]
 
   @@index([vendorId])
   @@index([category])
   @@index([certificationStatus])
-  @@index([isActive])
-  @@index([price])
-  @@index([createdAt])
 }
 
 model RentalSpace {
-  id              Int           @id @default(autoincrement())
-  vendorId        Int
-  vendor          VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  location        String
-  size            Float // Size in square meters
-  pricePerMonth   Float
-  soilType        String?
-  sunlight        String?
-  waterAccess     Boolean       @default(true)
-  images          String[]
-  amenities       String[]
-  availability    Boolean       @default(true)
-  isApproved      Boolean       @default(false)
-  approvedBy      Int?
-  approvedAt      DateTime?
-  rejectionReason String?
-  rating          Float         @default(0)
-  ratingCount     Int           @default(0)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id           Int      @id @default(autoincrement())
+  vendorId     Int
+  location     String
+  size         Float
+  price        Float
+  availability Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
+  vendor   VendorProfile   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   bookings RentalBooking[]
 
   @@index([vendorId])
   @@index([availability])
-  @@index([isApproved])
   @@index([location])
-  @@index([pricePerMonth])
 }
 
 model RentalBooking {
-  id                 Int         @id @default(autoincrement())
-  spaceId            Int
-  space              RentalSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId             Int
-  user               User        @relation(fields: [userId], references: [id])
-  startDate          DateTime
-  endDate            DateTime
-  totalPrice         Float
-  status             OrderStatus @default(PENDING)
-  paymentStatus      String      @default("pending")
-  paymentId          String?
-  specialRequests    String?
-  cancellationReason String?
-  cancelledAt        DateTime?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  id        Int         @id @default(autoincrement())
+  spaceId   Int
+  userId    Int
+  startDate DateTime
+  endDate   DateTime
+  status    OrderStatus @default(PENDING)
+  orderDate DateTime    @default(now())
+
+  // Relations
+  space RentalSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([spaceId])
   @@index([status])
-  @@index([startDate, endDate])
-  @@index([createdAt])
 }
 
 model Order {
-  id              Int           @id @default(autoincrement())
-  userId          Int
-  user            User          @relation(fields: [userId], references: [id])
-  vendorId        Int
-  vendor          VendorProfile @relation(fields: [vendorId], references: [id])
-  produceId       Int
-  produce         Produce       @relation(fields: [produceId], references: [id])
-  quantity        Int
-  unitPrice       Float
-  totalPrice      Float
-  status          OrderStatus   @default(PENDING)
-  deliveryAddress String
-  deliveryDate    DateTime?
-  paymentMethod   String
-  paymentId       String?
-  paymentStatus   PaymentStatus @default(PENDING)
-  trackingNumber  String?
-  notes           String?
-  cancelledBy     Int?
-  cancelledAt     DateTime?
-  deliveredAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id         Int         @id @default(autoincrement())
+  userId     Int
+  produceId  Int
+  vendorId   Int
+  quantity   Int
+  totalPrice Float
+  status     OrderStatus @default(PENDING)
+  orderDate  DateTime    @default(now())
+
+  // Relations
+  user    User          @relation(fields: [userId], references: [id])
+  produce Produce       @relation(fields: [produceId], references: [id])
+  vendor  VendorProfile @relation(fields: [vendorId], references: [id])
 
   @@index([userId])
   @@index([vendorId])
   @@index([status])
-  @@index([createdAt])
-  @@index([paymentStatus])
+  @@index([orderDate])
 }
 
 model CommunityPost {
-  id         Int       @id @default(autoincrement())
-  userId     Int
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title      String
-  content    String
-  images     String[]
-  tags       String[]
-  likes      Int       @default(0)
-  shares     Int       @default(0)
-  isPinned   Boolean   @default(false)
-  isApproved Boolean   @default(true)
-  approvedBy Int?
-  approvedAt DateTime?
-  viewCount  Int       @default(0)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  postContent String   @db.Text
+  postDate    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
-  comments CommunityComment[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([createdAt])
-  @@index([isApproved])
-  @@index([tags])
-}
-
-model CommunityComment {
-  id         Int           @id @default(autoincrement())
-  postId     Int
-  post       CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId     Int
-  user       User          @relation(fields: [userId], references: [id])
-  content    String
-  likes      Int           @default(0)
-  parentId   Int? // For nested comments
-  isApproved Boolean       @default(true)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@index([postId])
-  @@index([userId])
-  @@index([createdAt])
+  @@index([postDate])
 }
 
 model PlantTracking {
   id                  Int          @id @default(autoincrement())
   userId              Int
-  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   plantName           String
   plantType           String
-  variety             String?
   plantedDate         DateTime
   expectedHarvestDate DateTime
   actualHarvestDate   DateTime?
   healthStatus        HealthStatus @default(HEALTHY)
   growthStage         GrowthStage  @default(SEEDLING)
-  temperature         Float?
-  humidity            Float?
-  soilMoisture        Float?
-  lightExposure       String?
-  lastWatered         DateTime?
-  lastFertilized      DateTime?
-  lastPestControl     DateTime?
   notes               String?
-  images              String[]
-  isActive            Boolean      @default(true)
+  lastUpdated         DateTime     @updatedAt
   createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
 
   // Relations
-  growthLogs GrowthLog[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([healthStatus])
-  @@index([growthStage])
-  @@index([plantedDate])
   @@index([expectedHarvestDate])
-}
-
-model GrowthLog {
-  id           Int           @id @default(autoincrement())
-  plantId      Int
-  plant        PlantTracking @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  height       Float?
-  leafCount    Int?
-  healthStatus HealthStatus
-  growthStage  GrowthStage
-  temperature  Float?
-  humidity     Float?
-  soilMoisture Float?
-  notes        String?
-  imageUrl     String?
-  recordedAt   DateTime      @default(now())
-
-  @@index([plantId])
-  @@index([recordedAt])
 }
 
 model SustainabilityCert {
   id                 Int                 @id @default(autoincrement())
   vendorId           Int                 @unique
-  vendor             VendorProfile       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   certifyingAgency   String
-  certificateNumber  String
   certificationDate  DateTime
-  expiryDate         DateTime
-  documentUrl        String
+  expiryDate         DateTime?
+  documentUrl        String?
   verificationStatus CertificationStatus @default(PENDING)
   verifiedBy         Int?
   verifiedAt         DateTime?
-  verificationNotes  String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+
+  // Relations - Fixed: Only one relation to VendorProfile
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
   @@index([verificationStatus])
   @@index([expiryDate])
 }
 
-// ===================== AUTH & SECURITY MODELS =====================
+// ===================== AUTH MODELS =====================
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
 
 model PasswordResetToken {
   id        Int      @id @default(autoincrement())
@@ -403,217 +262,50 @@ model PasswordResetToken {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
   userId    Int?
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
 
   @@index([token])
   @@index([email])
-  @@index([expiresAt])
 }
 
-model RefreshToken {
+model AuditLog {
   id        Int      @id @default(autoincrement())
-  token     String   @unique
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  revoked   Boolean  @default(false)
+  userId    Int?
+  email     String?
+  action    String
+  entity    String
+  entityId  Int?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
   createdAt DateTime @default(now())
 
-  @@index([token])
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
   @@index([userId])
-  @@index([expiresAt])
+  @@index([action])
+  @@index([createdAt])
 }
 
-// ===================== NOTIFICATION & LOGGING MODELS =====================
-
 model Notification {
-  id        Int              @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   userId    Int
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
-  type      NotificationType
-  isRead    Boolean          @default(false)
-  readAt    DateTime?
-  metadata  Json? // Additional data as JSON
-  createdAt DateTime         @default(now())
+  type      String
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
-  @@index([type])
-}
-
-model AuditLog {
-  id           Int      @id @default(autoincrement())
-  userId       Int?
-  user         User?    @relation(fields: [userId], references: [id])
-  email        String? // For failed login attempts
-  action       String
-  entity       String
-  entityId     Int?
-  oldValues    Json?
-  newValues    Json?
-  ipAddress    String?
-  userAgent    String?
-  status       String   @default("SUCCESS") // SUCCESS, FAILED
-  errorMessage String?
-  createdAt    DateTime @default(now())
-
-  @@index([userId])
-  @@index([entity])
-  @@index([createdAt])
-  @@index([action])
-  @@index([status])
-}
-
-// ===================== VENDOR MANAGEMENT MODELS =====================
-
-model VendorApprovalRequest {
-  id         Int           @id @default(autoincrement())
-  vendorId   Int
-  vendor     VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  status     String        @default("PENDING") // PENDING, APPROVED, REJECTED, NEEDS_INFO
-  reviewedBy Int?
-  reviewer   User?         @relation(fields: [reviewedBy], references: [id])
-  comments   String?
-  documents  String[]
-  reviewedAt DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@index([vendorId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-model Location {
-  id        Int           @id @default(autoincrement())
-  vendorId  Int
-  vendor    VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  lat       Float
-  lng       Float
-  address   String
-  city      String
-  state     String
-  zipCode   String
-  country   String        @default("Bangladesh")
-  isPrimary Boolean       @default(false)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-
-  @@unique([vendorId, lat, lng])
-  @@index([city])
-  @@index([zipCode])
-  @@index([country])
-}
-
-// ===================== MARKETPLACE & REVIEWS =====================
-
-model Review {
-  id         Int           @id @default(autoincrement())
-  userId     Int
-  user       User          @relation(fields: [userId], references: [id])
-  vendorId   Int
-  vendor     VendorProfile @relation(fields: [vendorId], references: [id])
-  orderId    Int? // Link to specific order
-  rating     Int // 1-5
-  title      String?
-  comment    String
-  images     String[]
-  isVerified Boolean       @default(false) // Verified purchase
-  isApproved Boolean       @default(true)
-  reply      String? // Vendor reply
-  replyAt    DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@unique([userId, orderId]) // One review per order
-  @@index([userId])
-  @@index([vendorId])
-  @@index([rating])
-  @@index([createdAt])
-}
-
-// ===================== WISHLIST & CART =====================
-
-model Wishlist {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  produceId Int
-  produce   Produce  @relation(fields: [produceId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, produceId])
-  @@index([userId])
-  @@index([createdAt])
-}
-
-model Cart {
-  id        Int        @id @default(autoincrement())
-  userId    Int        @unique
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  @@index([userId])
-}
-
-model CartItem {
-  id        Int      @id @default(autoincrement())
-  cartId    Int
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  produceId Int
-  produce   Produce  @relation(fields: [produceId], references: [id])
-  quantity  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([cartId, produceId])
-  @@index([cartId])
-  @@index([produceId])
-}
-
-// ===================== COUPONS & DISCOUNTS =====================
-
-model Coupon {
-  id                Int           @id @default(autoincrement())
-  code              String        @unique
-  description       String?
-  discountType      String // PERCENTAGE, FIXED
-  discountValue     Float
-  minimumOrder      Float?
-  maximumDiscount   Float?
-  usageLimit        Int?
-  usedCount         Int           @default(0)
-  validFrom         DateTime
-  validUntil        DateTime
-  isActive          Boolean       @default(true)
-  applicableUsers   String[] // Specific user emails
-  applicableVendors Int[] // Specific vendor IDs
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  couponUsages      CouponUsage[]
-
-  @@index([code])
-  @@index([validFrom, validUntil])
-  @@index([isActive])
-}
-
-model CouponUsage {
-  id             Int      @id @default(autoincrement())
-  couponId       Int
-  coupon         Coupon   @relation(fields: [couponId], references: [id])
-  userId         Int
-  user           User     @relation(fields: [userId], references: [id])
-  orderId        Int
-  discountAmount Float
-  usedAt         DateTime @default(now())
-
-  @@unique([couponId, userId])
-  @@index([userId])
-  @@index([orderId])
 }

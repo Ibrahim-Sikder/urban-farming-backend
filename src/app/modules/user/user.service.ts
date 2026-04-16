@@ -20,12 +20,13 @@ export class UserService {
             prisma.order.findMany({
                 where: { userId },
                 take: 5,
-                orderBy: { createdAt: 'desc' },
+                orderBy: {
+                    orderDate: 'desc'
+                },
                 include: {
                     produce: {
                         select: {
                             name: true,
-                            images: true,
                         },
                     },
                 },
@@ -33,13 +34,15 @@ export class UserService {
             prisma.plantTracking.findMany({
                 where: { userId },
                 take: 5,
-                orderBy: { createdAt: 'desc' },
+                orderBy: {
+                    createdAt: 'desc'
+                },
                 select: {
                     id: true,
                     plantName: true,
                     healthStatus: true,
                     growthStage: true,
-                    createdAt: true,
+                    plantedDate: true,
                 },
             }),
         ]);
@@ -51,7 +54,15 @@ export class UserService {
                 totalPlants: plantCount,
                 totalPosts: postCount,
             },
-            recentOrders,
+            recentOrders: recentOrders.map(order => ({
+                id: order.id,
+                totalPrice: order.totalPrice,
+                status: order.status,
+                orderDate: order.orderDate,
+                produce: {
+                    name: order.produce.name,
+                },
+            })),
             recentPlants,
         };
     }
@@ -64,19 +75,15 @@ export class UserService {
                 where: { userId },
                 skip,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy: {
+                    orderDate: 'desc'
+                },
                 include: {
                     produce: {
-                        select: {
-                            name: true,
-                            images: true,
+                        include: {
                             vendor: {
-                                include: {
-                                    user: {
-                                        select: {
-                                            name: true,
-                                        },
-                                    },
+                                select: {
+                                    farmName: true,
                                 },
                             },
                         },
@@ -87,7 +94,19 @@ export class UserService {
         ]);
 
         return {
-            orders,
+            orders: orders.map(order => ({
+                id: order.id,
+                quantity: order.quantity,
+                totalPrice: order.totalPrice,
+                status: order.status,
+                orderDate: order.orderDate,
+                produce: {
+                    name: order.produce.name,
+                    vendor: {
+                        farmName: order.produce.vendor.farmName,
+                    },
+                },
+            })),
             total,
             page,
             limit,
@@ -96,37 +115,56 @@ export class UserService {
     }
 
     static async getRentals(userId: number): Promise<RentalResponse[]> {
-        return prisma.rentalBooking.findMany({
+        const rentals = await prisma.rentalBooking.findMany({
             where: { userId },
             include: {
                 space: {
-                    include: {
-                        vendor: {
-                            include: {
-                                user: {
-                                    select: {
-                                        name: true,
-                                    },
-                                },
-                            },
-                        },
+                    select: {
+                        location: true,
+                        size: true,
+                        price: true,
                     },
                 },
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: {
+                orderDate: 'desc'
+            },
         });
+
+        return rentals.map(rental => ({
+            id: rental.id,
+            startDate: rental.startDate,
+            endDate: rental.endDate,
+            status: rental.status,
+            orderDate: rental.orderDate,
+            space: {
+                location: rental.space.location,
+                size: rental.space.size,
+                price: rental.space.price,
+            },
+        }));
     }
 
     static async getPlants(userId: number): Promise<PlantResponse[]> {
-        return prisma.plantTracking.findMany({
-            where: { userId, isActive: true },
-            include: {
-                growthLogs: {
-                    take: 5,
-                    orderBy: { recordedAt: 'desc' },
-                },
+        const plants = await prisma.plantTracking.findMany({
+            where: { userId },
+            orderBy: {
+                lastUpdated: 'desc'
             },
-            orderBy: { updatedAt: 'desc' },
         });
+
+        return plants.map(plant => ({
+            id: plant.id,
+            plantName: plant.plantName,
+            plantType: plant.plantType,
+            plantedDate: plant.plantedDate,
+            expectedHarvestDate: plant.expectedHarvestDate,
+            actualHarvestDate: plant.actualHarvestDate || undefined,
+            healthStatus: plant.healthStatus,
+            growthStage: plant.growthStage,
+            notes: plant.notes || undefined,
+            lastUpdated: plant.lastUpdated,
+            createdAt: plant.createdAt,
+        }));
     }
 }

@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import prisma from '../../config/prisma';
 import { config } from '../../config';
-import { UserStatus, Role } from '@prisma/client';
+import { UserStatus, Role, CertificationStatus } from '@prisma/client';
 import {
     RegisterInput,
     LoginInput,
@@ -13,15 +13,12 @@ import {
     AuthResponse,
     TokenResponse,
     MessageResponse,
-    UserProfileResponse,
     PaginatedUsersResponse
 } from './auth.type';
 
 export class AuthService {
 
-    // ============ AUTHENTICATION OPERATIONS ============
-
-    static async register(data: RegisterInput): Promise<Omit<RegisterInput, 'password'>> {
+    static async register(data: RegisterInput): Promise<any> {
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email },
         });
@@ -55,23 +52,13 @@ export class AuthService {
             },
         });
 
-        // Create vendor profile if role is VENDOR
         if (data.role === Role.VENDOR) {
             await prisma.vendorProfile.create({
                 data: {
                     userId: user.id,
                     farmName: data.farmName || '',
                     farmLocation: data.farmLocation || '',
-                    certificationStatus: 'PENDING',
-                    approvalStatus: 'PENDING',
-                },
-            });
-
-            await prisma.vendorApprovalRequest.create({
-                data: {
-                    vendorId: user.id,
-                    status: 'PENDING',
-                    documents: data.documents || [],
+                    certificationStatus: CertificationStatus.PENDING,
                 },
             });
         }
@@ -99,14 +86,13 @@ export class AuthService {
                         id: true,
                         farmName: true,
                         certificationStatus: true,
-                        isVerified: true,
-                        approvalStatus: true,
+                        farmLocation: true,
                     },
                 },
             },
         });
 
-        if (!user || user.deletedAt) {
+        if (!user) {
             throw new Error('Invalid credentials');
         }
 
@@ -128,15 +114,11 @@ export class AuthService {
             throw new Error('Account is inactive. Please contact support.');
         }
 
-        if (user.role === Role.VENDOR && user.vendorProfile?.approvalStatus !== 'APPROVED') {
-            throw new Error('Your vendor account is pending approval. Please wait for admin verification.');
-        }
-
-        // Fix: Use proper JWT sign options with correct typing
+        // Fix: Use proper JWT sign options
         const accessToken = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
             config.jwt.secret,
-            { expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'] }
+            { expiresIn: '15m' } as jwt.SignOptions
         );
 
         const refreshToken = crypto.randomBytes(40).toString('hex');
@@ -175,7 +157,12 @@ export class AuthService {
                 phoneNumber: user.phoneNumber || undefined,
                 address: user.address || undefined,
                 profileImage: user.profileImage || undefined,
-                vendorProfile: user.vendorProfile || undefined,
+                vendorProfile: user.vendorProfile ? {
+                    id: user.vendorProfile.id,
+                    farmName: user.vendorProfile.farmName,
+                    certificationStatus: user.vendorProfile.certificationStatus,
+                    farmLocation: user.vendorProfile.farmLocation,
+                } : undefined,
             },
         };
     }
@@ -194,11 +181,11 @@ export class AuthService {
             throw new Error('Invalid or expired refresh token');
         }
 
-        // Fix: Use proper JWT sign options with correct typing
+        // Fix: Use proper JWT sign options
         const newAccessToken = jwt.sign(
             { id: token.user.id, email: token.user.email, role: token.user.role },
             config.jwt.secret,
-            { expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'] }
+            { expiresIn: '15m' } as jwt.SignOptions
         );
 
         return {
@@ -235,8 +222,6 @@ export class AuthService {
 
         return { message: 'Logged out from all devices' };
     }
-
-    // ============ PASSWORD MANAGEMENT ============
 
     static async changePassword(userId: number, data: ChangePasswordInput): Promise<MessageResponse> {
         const user = await prisma.user.findUnique({
@@ -296,16 +281,6 @@ export class AuthService {
             });
 
             console.log(`Password reset token for ${email}: ${resetToken}`);
-
-            await prisma.auditLog.create({
-                data: {
-                    userId: user.id,
-                    action: 'FORGOT_PASSWORD',
-                    entity: 'User',
-                    entityId: user.id,
-                    ipAddress: ipAddress,
-                },
-            });
         }
 
         return { message: 'If email exists, reset link will be sent' };
@@ -362,65 +337,44 @@ export class AuthService {
         return { message: 'Password reset successfully' };
     }
 
-    // ============ PROFILE MANAGEMENT ============
-
-    static async getProfile(userId: number): Promise<UserProfileResponse> {
+    static async getProfile(userId: number): Promise<any> {
         const user = await prisma.user.findUnique({
-            where: { id: userId, deletedAt: null },
+            where: { id: userId },
             include: {
                 vendorProfile: {
                     include: {
                         produce: {
                             take: 5,
                             orderBy: { createdAt: 'desc' },
-                            where: { certificationStatus: 'APPROVED' },
-                            select: {
-                                id: true,
-                                name: true,
-                                price: true,
-                                images: true,
-                                certificationStatus: true,
-                            },
                         },
                         rentalSpaces: {
-                            where: { availability: true, isApproved: true },
+                            where: { availability: true },
                             take: 5,
-                            select: {
-                                id: true,
-                                name: true,
-                                pricePerMonth: true,
-                                location: true,
-                                availability: true,
-                            },
                         },
                         sustainabilityCert: true,
-                        approvalRequests: {
-                            orderBy: { createdAt: 'desc' },
-                            take: 1,
-                        },
                     },
                 },
                 orders: {
                     take: 10,
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { orderDate: 'desc' },
                     include: {
                         produce: {
-                            select: { name: true, images: true },
+                            select: { name: true },
                         },
                     },
                 },
                 communityPosts: {
                     take: 5,
-                    orderBy: { createdAt: 'desc' },
-                    where: { isApproved: true },
+                    orderBy: { postDate: 'desc' },
                 },
                 plantTrackings: {
-                    where: { healthStatus: { not: 'HARVEST_READY' } },
+                    take: 5,
+                    orderBy: { createdAt: 'desc' },
                 },
                 notifications: {
                     where: { isRead: false },
-                    orderBy: { createdAt: 'desc' },
                     take: 10,
+                    orderBy: { createdAt: 'desc' },
                 },
             },
         });
@@ -429,7 +383,7 @@ export class AuthService {
             throw new Error('User not found');
         }
 
-        return user as unknown as UserProfileResponse;
+        return user;
     }
 
     static async updateProfile(userId: number, data: UpdateProfileInput) {
@@ -453,26 +407,8 @@ export class AuthService {
             },
         });
 
-        const newValuesObject: Record<string, any> = {};
-        if (data.name !== undefined) newValuesObject.name = data.name;
-        if (data.phoneNumber !== undefined) newValuesObject.phoneNumber = data.phoneNumber;
-        if (data.address !== undefined) newValuesObject.address = data.address;
-        if (data.profileImage !== undefined) newValuesObject.profileImage = data.profileImage;
-
-        await prisma.auditLog.create({
-            data: {
-                userId: userId,
-                action: 'UPDATE_PROFILE',
-                entity: 'User',
-                entityId: userId,
-                newValues: newValuesObject,
-            },
-        });
-
         return user;
     }
-
-    // ============ ADMIN OPERATIONS ============
 
     static async getAllUsers(page: number = 1, limit: number = 10, filters?: {
         role?: string;
@@ -480,8 +416,7 @@ export class AuthService {
         search?: string;
     }): Promise<PaginatedUsersResponse> {
         const skip = (page - 1) * limit;
-        const take = limit;
-        const where: any = { deletedAt: null };
+        const where: any = {};
 
         if (filters?.role) where.role = filters.role;
         if (filters?.status) where.status = filters.status;
@@ -496,7 +431,7 @@ export class AuthService {
             prisma.user.findMany({
                 where,
                 skip,
-                take,
+                take: limit,
                 select: {
                     id: true,
                     name: true,
@@ -509,8 +444,7 @@ export class AuthService {
                         select: {
                             farmName: true,
                             certificationStatus: true,
-                            isVerified: true,
-                            approvalStatus: true,
+                            farmLocation: true,
                         },
                     },
                 },
@@ -529,16 +463,6 @@ export class AuthService {
             select: { id: true, name: true, email: true, status: true },
         });
 
-        await prisma.auditLog.create({
-            data: {
-                userId: adminId,
-                action: 'UPDATE_USER_STATUS',
-                entity: 'User',
-                entityId: userId,
-                newValues: { status: status },
-            },
-        });
-
         await prisma.notification.create({
             data: {
                 userId: userId,
@@ -554,16 +478,7 @@ export class AuthService {
     static async deleteUser(userId: number, adminId: number): Promise<MessageResponse> {
         await prisma.user.update({
             where: { id: userId },
-            data: { deletedAt: new Date(), status: UserStatus.INACTIVE },
-        });
-
-        await prisma.auditLog.create({
-            data: {
-                userId: adminId,
-                action: 'DELETE_USER',
-                entity: 'User',
-                entityId: userId,
-            },
+            data: { status: UserStatus.INACTIVE },
         });
 
         return { message: 'User deleted successfully' };

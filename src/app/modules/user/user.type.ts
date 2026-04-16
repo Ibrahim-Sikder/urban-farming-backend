@@ -11,10 +11,9 @@ export interface DashboardStatsResponse {
         id: number;
         totalPrice: number;
         status: string;
-        createdAt: Date;
+        orderDate: Date;
         produce: {
             name: string;
-            images: string[];
         };
     }>;
     recentPlants: Array<{
@@ -22,7 +21,7 @@ export interface DashboardStatsResponse {
         plantName: string;
         healthStatus: string;
         growthStage: string;
-        createdAt: Date;
+        plantedDate: Date;
     }>;
 }
 
@@ -30,21 +29,13 @@ export interface OrdersResponse {
     orders: Array<{
         id: number;
         quantity: number;
-        unitPrice: number;
         totalPrice: number;
         status: string;
-        paymentStatus: string;
-        deliveryAddress: string;
-        deliveryDate?: Date;
-        trackingNumber?: string;
-        createdAt: Date;
+        orderDate: Date;
         produce: {
             name: string;
-            images: string[];
             vendor: {
-                user: {
-                    name: string;
-                };
+                farmName: string;
             };
         };
     }>;
@@ -58,21 +49,12 @@ export interface RentalResponse {
     id: number;
     startDate: Date;
     endDate: Date;
-    totalPrice: number;
     status: string;
-    paymentStatus: string;
-    createdAt: Date;
+    orderDate: Date;
     space: {
-        name: string;
         location: string;
         size: number;
-        pricePerMonth: number;
-        images: string[];
-        vendor: {
-            user: {
-                name: string;
-            };
-        };
+        price: number;
     };
 }
 
@@ -80,31 +62,12 @@ export interface PlantResponse {
     id: number;
     plantName: string;
     plantType: string;
-    variety?: string;
     plantedDate: Date;
     expectedHarvestDate: Date;
     actualHarvestDate?: Date;
     healthStatus: string;
     growthStage: string;
-    temperature?: number;
-    humidity?: number;
-    soilMoisture?: number;
-    lightExposure?: string;
-    lastWatered?: Date;
-    lastFertilized?: Date;
     notes?: string;
-    images: string[];
-    isActive: boolean;
+    lastUpdated: Date;
     createdAt: Date;
-    updatedAt: Date;
-    growthLogs: Array<{
-        id: number;
-        height?: number;
-        leafCount?: number;
-        healthStatus: string;
-        growthStage: string;
-        notes?: string;
-        imageUrl?: string;
-        recordedAt: Date;
-    }>;
 }

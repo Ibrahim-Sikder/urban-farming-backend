@@ -1,13 +1,18 @@
 import { Router } from 'express';
 import { authRoutes } from '../modules/auth/auth.route';
 import { userRoutes } from '../modules/user/user.route';
+import { communityRoutes } from '../modules/community/community.routes';
+import { vendorRoutes } from '../modules/vendor/vendor.routes';
 
 
 const router = Router();
 
 const moduleRoutes = [
     { path: '/auth', route: authRoutes },
-    { path: '/user', route: userRoutes }
+    { path: '/users', route: userRoutes },
+    { path: '/community', route: communityRoutes },
+    { path: '/vendors', route: vendorRoutes }
+
 ];
 
 moduleRoutes.forEach((route) => {
