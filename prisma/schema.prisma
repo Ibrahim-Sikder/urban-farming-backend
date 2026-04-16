@@ -1,8 +1,296 @@
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
+// generator client {
+//   provider = "prisma-client"
+//   output   = "../generated/prisma"
+// }
 
 datasource db {
   provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+enum Role {
+  ADMIN
+  VENDOR
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum CertificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum HealthStatus {
+  HEALTHY
+  MODERATE
+  CRITICAL
+  HARVEST_READY
+}
+
+enum GrowthStage {
+  SEEDLING
+  VEGETATIVE
+  FLOWERING
+  FRUITING
+  HARVESTING
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String
+  email        String     @unique
+  password     String
+  role         Role       @default(CUSTOMER)
+  status       UserStatus @default(ACTIVE)
+  profileImage String?
+  phoneNumber  String?
+  address      String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  vendorProfile     VendorProfile?
+  orders            Order[]
+  communityPosts    CommunityPost[]
+  plantTrackings    PlantTracking[]
+  rentals           RentalBooking[]
+  communityComments CommunityComment[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model VendorProfile {
+  id                  Int                 @id @default(autoincrement())
+  userId              Int                 @unique
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmName            String
+  farmDescription     String?
+  farmLocation        String // JSON string
+  certificationStatus CertificationStatus @default(PENDING)
+  totalRating         Float               @default(0)
+  ratingCount         Int                 @default(0)
+  isVerified          Boolean             @default(false)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  produce            Produce[]
+  rentalSpaces       RentalSpace[]
+  sustainabilityCert SustainabilityCert?
+  orders             Order[]
+
+  @@index([certificationStatus])
+  @@index([isVerified])
+}
+
+model Produce {
+  id                  Int                 @id @default(autoincrement())
+  vendorId            Int
+  vendor              VendorProfile       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  name                String
+  description         String
+  price               Float
+  category            String
+  subCategory         String?
+  images              String[] // Array of image URLs
+  certificationStatus CertificationStatus @default(PENDING)
+  availableQuantity   Int
+  unit                String              @default("kg") // kg, piece, bunch
+  organicLabel        Boolean             @default(false)
+  harvestDate         DateTime?
+  expiryDate          DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  orders Order[]
+
+  @@index([vendorId])
+  @@index([category])
+  @@index([certificationStatus])
+}
+
+model RentalSpace {
+  id            Int           @id @default(autoincrement())
+  vendorId      Int
+  vendor        VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  location      String // JSON string {lat, lng, address}
+  size          Float // Square feet
+  pricePerMonth Float
+  soilType      String?
+  sunlight      String?
+  waterAccess   Boolean       @default(true)
+  images        String[]
+  amenities     String[] // ["water", "electricity", "tools"]
+  availability  Boolean       @default(true)
+  isApproved    Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  bookings RentalBooking[]
+
+  @@index([vendorId])
+  @@index([availability])
+}
+
+model RentalBooking {
+  id              Int         @id @default(autoincrement())
+  spaceId         Int
+  space           RentalSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId          Int
+  user            User        @relation(fields: [userId], references: [id])
+  startDate       DateTime
+  endDate         DateTime
+  totalPrice      Float
+  status          OrderStatus @default(PENDING)
+  paymentStatus   String      @default("pending")
+  specialRequests String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([spaceId])
+  @@index([status])
+}
+
+model Order {
+  id              Int           @id @default(autoincrement())
+  userId          Int
+  user            User          @relation(fields: [userId], references: [id])
+  vendorId        Int
+  vendor          VendorProfile @relation(fields: [vendorId], references: [id])
+  produceId       Int
+  produce         Produce       @relation(fields: [produceId], references: [id])
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+  status          OrderStatus   @default(PENDING)
+  deliveryAddress String
+  deliveryDate    DateTime?
+  paymentMethod   String
+  paymentId       String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([vendorId])
+  @@index([status])
+}
+
+model CommunityPost {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  images     String[]
+  tags       String[] // ["gardening", "organic"]
+  likes      Int      @default(0)
+  shares     Int      @default(0)
+  isPinned   Boolean  @default(false)
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  comments CommunityComment[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model CommunityComment {
+  id        Int           @id @default(autoincrement())
+  postId    Int
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User          @relation(fields: [userId], references: [id])
+  content   String
+  likes     Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  @@index([postId])
+}
+
+model PlantTracking {
+  id                  Int          @id @default(autoincrement())
+  userId              Int
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plantName           String
+  plantType           String
+  variety             String?
+  plantedDate         DateTime
+  expectedHarvestDate DateTime
+  healthStatus        HealthStatus @default(HEALTHY)
+  growthStage         GrowthStage  @default(SEEDLING)
+  temperature         Float? // Celsius
+  humidity            Float? // Percentage
+  soilMoisture        Float? // Percentage
+  lastWatered         DateTime?
+  lastFertilized      DateTime?
+  notes               String?
+  images              String[]
+  growthLogs          GrowthLog[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([healthStatus])
+}
+
+model GrowthLog {
+  id           Int           @id @default(autoincrement())
+  plantId      Int
+  plant        PlantTracking @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  height       Float? // cm
+  leafCount    Int?
+  healthStatus HealthStatus
+  growthStage  GrowthStage
+  notes        String?
+  imageUrl     String?
+  recordedAt   DateTime      @default(now())
+
+  @@index([plantId])
+}
+
+model SustainabilityCert {
+  id                 Int                 @id @default(autoincrement())
+  vendorId           Int                 @unique
+  vendor             VendorProfile       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  certifyingAgency   String
+  certificateNumber  String
+  certificationDate  DateTime
+  expiryDate         DateTime
+  documentUrl        String
+  verificationStatus CertificationStatus @default(PENDING)
+  verifiedBy         Int? // Admin ID
+  verifiedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([vendorId])
+  @@index([verificationStatus])
 }
