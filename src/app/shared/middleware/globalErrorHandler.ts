@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
-import config from '../../config';
+import { config } from '@/app/config';
+
 
 
 interface ErrorWithStatus extends Error {
