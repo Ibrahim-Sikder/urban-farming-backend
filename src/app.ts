@@ -5,8 +5,8 @@ import cookieParser from 'cookie-parser';
 import { config } from './app/config';
 import { globalLimiter } from './app/shared/middleware/rateLimiter';
 import { notFound } from './app/shared/middleware/notFound';
-import { errorHandler } from './app/shared/middleware/errorHandler';
 import router from './app/routes';
+import globalErrorHandler from './app/shared/middleware/errorHandler';
 
 const app: Application = express();
 
@@ -29,10 +29,10 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // API Routes
-app.use('/api/v1/auth', router);
+app.use('/api/v1', router);
 
 // Error handling
 app.use(notFound);
-app.use(errorHandler);
+app.use(globalErrorHandler);
 
 export default app;

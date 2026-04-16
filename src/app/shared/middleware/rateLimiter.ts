@@ -1,6 +1,5 @@
-import { config } from '@/app/config';
 import rateLimit from 'express-rate-limit';
-
+import { config } from '../../config';
 
 export const globalLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
@@ -11,8 +10,8 @@ export const globalLimiter = rateLimit({
 });
 
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts
   message: 'Too many authentication attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,

@@ -19,7 +19,7 @@ export class ResponseHandler {
         });
     }
 
-    static paginated(res: Response, items: any[], total: number, page: number, limit: number) {
+    static paginated(res: Response, items: any[], total: number, page: number, limit: number, message = 'Success') {
         const totalPages = Math.ceil(total / limit);
         return this.success(res, {
             items,
@@ -31,6 +31,6 @@ export class ResponseHandler {
                 hasNext: page < totalPages,
                 hasPrev: page > 1,
             },
-        });
+        }, message);
     }
 }

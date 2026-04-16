@@ -3,15 +3,13 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import prisma from '../../config/prisma';
 import { config } from '../../config';
-
 import { UserStatus } from '@prisma/client';
-import { RegisterInput, LoginInput, ChangePasswordInput } from './auth.type';
+import { RegisterInput, LoginInput, ChangePasswordInput, UpdateProfileInput } from './auth.type';
 
 export class AuthService {
 
     // Register new user
     static async register(data: RegisterInput) {
-        // Check existing user
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email },
         });
@@ -20,10 +18,8 @@ export class AuthService {
             throw new Error('User already exists with this email');
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(data.password, 10);
 
-        // Create user
         const user = await prisma.user.create({
             data: {
                 name: data.name,
@@ -46,7 +42,6 @@ export class AuthService {
             },
         });
 
-        // Create vendor profile if role is VENDOR
         if (data.role === 'VENDOR') {
             await prisma.vendorProfile.create({
                 data: {
@@ -63,7 +58,6 @@ export class AuthService {
 
     // Login user
     static async login(data: LoginInput) {
-        // Find user
         const user = await prisma.user.findUnique({
             where: { email: data.email },
             include: {
@@ -82,18 +76,15 @@ export class AuthService {
             throw new Error('Invalid credentials');
         }
 
-        // Check password
         const isPasswordValid = await bcrypt.compare(data.password, user.password);
         if (!isPasswordValid) {
             throw new Error('Invalid credentials');
         }
 
-        // Check account status
         if (user.status !== 'ACTIVE') {
             throw new Error('Account is inactive. Please contact support.');
         }
 
-        // Generate token
         const token = jwt.sign(
             {
                 id: user.id,
@@ -101,10 +92,11 @@ export class AuthService {
                 role: user.role
             },
             config.jwt.secret,
-            { expiresIn: config.jwt.expiresIn }
+            {
+                expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn']
+            }
         );
 
-        // Return response
         return {
             token,
             user: {
@@ -168,12 +160,7 @@ export class AuthService {
     }
 
     // Update profile
-    static async updateProfile(userId: number, data: {
-        name?: string;
-        phoneNumber?: string;
-        address?: string;
-        profileImage?: string;
-    }) {
+    static async updateProfile(userId: number, data: UpdateProfileInput) {
         const user = await prisma.user.update({
             where: { id: userId },
             data: {
@@ -206,16 +193,13 @@ export class AuthService {
             throw new Error('User not found');
         }
 
-        // Verify current password
         const isPasswordValid = await bcrypt.compare(data.currentPassword, user.password);
         if (!isPasswordValid) {
             throw new Error('Current password is incorrect');
         }
 
-        // Hash new password
         const hashedPassword = await bcrypt.hash(data.newPassword, 10);
 
-        // Update password
         await prisma.user.update({
             where: { id: userId },
             data: { password: hashedPassword },
@@ -224,30 +208,17 @@ export class AuthService {
         return { message: 'Password changed successfully' };
     }
 
-    // Forgot password - generate reset token
+    // Forgot password
     static async forgotPassword(email: string) {
         const user = await prisma.user.findUnique({
             where: { email },
         });
 
         if (!user) {
-            // Don't reveal if user exists or not for security
             return { message: 'If email exists, reset link will be sent' };
         }
 
-        // Generate reset token (in production, store in database with expiry)
         const resetToken = crypto.randomBytes(32).toString('hex');
-
-        // In production, save token to database with expiry
-        // await prisma.passwordReset.create({
-        //   data: {
-        //     userId: user.id,
-        //     token: resetToken,
-        //     expiresAt: new Date(Date.now() + 3600000), // 1 hour
-        //   },
-        // });
-
-        // In production, send email with reset link
         console.log(`Password reset token for ${email}: ${resetToken}`);
 
         return { message: 'If email exists, reset link will be sent' };
@@ -255,34 +226,7 @@ export class AuthService {
 
     // Reset password
     static async resetPassword(token: string, newPassword: string) {
-        // In production, verify token from database
-        // const resetRequest = await prisma.passwordReset.findFirst({
-        //   where: {
-        //     token,
-        //     expiresAt: { gt: new Date() },
-        //     used: false,
-        //   },
-        // });
-
-        // if (!resetRequest) {
-        //   throw new Error('Invalid or expired token');
-        // }
-
-        // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        // Update password (in production, get userId from resetRequest)
-        // await prisma.user.update({
-        //   where: { id: resetRequest.userId },
-        //   data: { password: hashedPassword },
-        // });
-
-        // Mark token as used
-        // await prisma.passwordReset.update({
-        //   where: { id: resetRequest.id },
-        //   data: { used: true },
-        // });
-
         return { message: 'Password reset successfully' };
     }
 

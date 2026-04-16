@@ -1,8 +1,9 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import config from '../config';
-import { Prisma } from '@prisma/client';
+
+import prisma from '../config/prisma';
+import { config } from '../config';
 
 
 interface SocketWithUser extends Socket {
@@ -15,7 +16,7 @@ export class WebSocketManager {
     static initialize(server: HttpServer) {
         this.io = new SocketServer(server, {
             cors: {
-                origin: config.cors_origin,
+                origin: config.cors.origin,
                 credentials: true,
                 methods: ['GET', 'POST'],
             },
@@ -30,8 +31,8 @@ export class WebSocketManager {
                     return next(new Error('Authentication required'));
                 }
 
-                const decoded = jwt.verify(token, config.jwt_secret) as { id: number };
-                const user = await Prisma.user.findUnique({
+                const decoded = jwt.verify(token, config.jwt.secret) as { id: number };
+                const user = await prisma.user.findUnique({
                     where: { id: decoded.id, status: 'ACTIVE' },
                     select: { id: true, role: true },
                 });

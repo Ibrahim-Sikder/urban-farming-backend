@@ -1,4 +1,4 @@
-import { PrismaClient, Role, UserStatus, CertificationStatus } from '@prisma/client';
+import { PrismaClient, Role, UserStatus, CertificationStatus, OrderStatus, HealthStatus, GrowthStage } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -16,13 +16,16 @@ async function main() {
             password: await bcrypt.hash('Admin@123', 10),
             role: Role.ADMIN,
             status: UserStatus.ACTIVE,
-            phoneNumber: '+8801700000000'
+            phoneNumber: '+8801700000000',
+            address: 'Dhaka, Bangladesh'
         }
     });
     console.log(`✅ Created admin: ${admin.email}`);
 
     // Create 10 vendors with products
-    const vendors = [];
+    const vendors: { id: number; farmName: string }[] = [];
+    const categories = ['Vegetables', 'Fruits', 'Herbs', 'Microgreens', 'Mushrooms'];
+
     for (let i = 1; i <= 10; i++) {
         const user = await prisma.user.create({
             data: {
@@ -85,6 +88,7 @@ async function main() {
                     soilType: 'Loamy',
                     sunlight: 'Full Sun',
                     waterAccess: true,
+                    images: [`https://storage.urbanfarming.com/spaces/plot${j}.jpg`],
                     amenities: ['water', 'electricity', 'tools', 'fencing'],
                     availability: true,
                     isApproved: true
@@ -93,15 +97,17 @@ async function main() {
         }
 
         // Create 10 products per vendor
-        const categories = ['Vegetables', 'Fruits', 'Herbs', 'Microgreens', 'Mushrooms'];
         for (let k = 1; k <= 10; k++) {
+            const categoryIndex = k % categories.length;
+            const category = categories[categoryIndex] || 'Vegetables';
+
             await prisma.produce.create({
                 data: {
                     vendorId: vendor.id,
-                    name: `Organic ${categories[k % categories.length]} ${k}`,
-                    description: `Fresh, chemical-free ${categories[k % categories.length]} grown with love.`,
+                    name: `Organic ${category} ${k}`,
+                    description: `Fresh, chemical-free ${category} grown with love.`,
                     price: 50 + (k * 10),
-                    category: categories[k % categories.length],
+                    category: category,
                     subCategory: 'Organic',
                     images: [`https://storage.urbanfarming.com/products/produce${k}.jpg`],
                     certificationStatus: CertificationStatus.APPROVED,
@@ -113,12 +119,12 @@ async function main() {
             });
         }
 
-        vendors.push(vendor);
+        vendors.push({ id: vendor.id, farmName: vendor.farmName });
         console.log(`✅ Created vendor ${i}: ${user.name} with 10 spaces and 10 products`);
     }
 
     // Create customers
-    const customers = [];
+    const customers: { id: number; address: string | null }[] = [];
     for (let i = 1; i <= 20; i++) {
         const user = await prisma.user.create({
             data: {
@@ -131,7 +137,7 @@ async function main() {
                 address: `Customer Address ${i}, Dhaka`
             }
         });
-        customers.push(user);
+        customers.push({ id: user.id, address: user.address });
 
         // Create plant tracking for each customer
         for (let j = 1; j <= 3; j++) {
@@ -143,10 +149,11 @@ async function main() {
                     variety: 'Heirloom',
                     plantedDate: new Date(Date.now() - j * 7 * 24 * 60 * 60 * 1000),
                     expectedHarvestDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                    healthStatus: 'HEALTHY',
-                    growthStage: 'VEGETATIVE',
+                    healthStatus: HealthStatus.HEALTHY,
+                    growthStage: GrowthStage.VEGETATIVE,
                     lastWatered: new Date(),
-                    notes: 'Growing well, need support soon'
+                    notes: 'Growing well, need support soon',
+                    images: []
                 }
             });
         }
@@ -159,6 +166,7 @@ async function main() {
                     title: `My urban gardening experience ${j}`,
                     content: `I've been growing vegetables on my balcony for ${j} months now. It's amazing!`,
                     tags: ['urbanfarming', 'organic', 'balcony garden'],
+                    images: [],
                     likes: Math.floor(Math.random() * 50),
                     shares: Math.floor(Math.random() * 10),
                     isApproved: true
@@ -173,30 +181,65 @@ async function main() {
     for (let i = 1; i <= 50; i++) {
         const customer = customers[Math.floor(Math.random() * customers.length)];
         const vendor = vendors[Math.floor(Math.random() * vendors.length)];
-        const produce = await prisma.produce.findFirst({
-            where: { vendorId: vendor.id }
-        });
 
-        if (produce) {
-            await prisma.order.create({
-                data: {
-                    userId: customer.id,
-                    vendorId: vendor.id,
-                    produceId: produce.id,
-                    quantity: Math.floor(Math.random() * 5) + 1,
-                    unitPrice: produce.price,
-                    totalPrice: produce.price * (Math.floor(Math.random() * 5) + 1),
-                    status: 'COMPLETED',
-                    deliveryAddress: customer.address || 'Dhaka',
-                    paymentMethod: 'bkash',
-                    paymentId: `PAY${Date.now()}${i}`,
-                    createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000)
-                }
+        if (customer && vendor) {
+            const produce = await prisma.produce.findFirst({
+                where: { vendorId: vendor.id }
             });
+
+            if (produce) {
+                await prisma.order.create({
+                    data: {
+                        userId: customer.id,
+                        vendorId: vendor.id,
+                        produceId: produce.id,
+                        quantity: Math.floor(Math.random() * 5) + 1,
+                        unitPrice: produce.price,
+                        totalPrice: produce.price * (Math.floor(Math.random() * 5) + 1),
+                        status: OrderStatus.COMPLETED,
+                        deliveryAddress: customer.address || 'Dhaka',
+                        paymentMethod: 'bkash',
+                        paymentId: `PAY${Date.now()}${i}`,
+                        createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+                    }
+                });
+            }
         }
     }
 
     console.log(`✅ Created 50 sample orders`);
+
+    // Create some rental bookings
+    for (let i = 1; i <= 30; i++) {
+        const customer = customers[Math.floor(Math.random() * customers.length)];
+        const vendor = vendors[Math.floor(Math.random() * vendors.length)];
+
+        if (customer && vendor) {
+            const rentalSpace = await prisma.rentalSpace.findFirst({
+                where: { vendorId: vendor.id, availability: true }
+            });
+
+            if (rentalSpace) {
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
+
+                await prisma.rentalBooking.create({
+                    data: {
+                        spaceId: rentalSpace.id,
+                        userId: customer.id,
+                        startDate: startDate,
+                        endDate: endDate,
+                        totalPrice: rentalSpace.pricePerMonth,
+                        status: OrderStatus.COMPLETED,
+                        paymentStatus: 'paid'
+                    }
+                });
+            }
+        }
+    }
+
+    console.log(`✅ Created 30 rental bookings`);
 
     // Summary
     const stats = await prisma.$transaction([
@@ -206,7 +249,8 @@ async function main() {
         prisma.rentalSpace.count(),
         prisma.communityPost.count(),
         prisma.plantTracking.count(),
-        prisma.order.count()
+        prisma.order.count(),
+        prisma.rentalBooking.count()
     ]);
 
     console.log('\n📊 Seeding Summary:');
@@ -217,6 +261,7 @@ async function main() {
     console.log(`- Community Posts: ${stats[4]}`);
     console.log(`- Plant Trackings: ${stats[5]}`);
     console.log(`- Orders: ${stats[6]}`);
+    console.log(`- Rental Bookings: ${stats[7]}`);
 
     console.log('\n🎉 Seeding completed successfully!');
 }

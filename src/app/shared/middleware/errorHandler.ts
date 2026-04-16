@@ -1,50 +1,68 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
-import { ResponseHandler } from '../utils/response';
+import { config } from '../../config';
 
-export const errorHandler = (
-    err: any,
+interface ErrorWithStatus extends Error {
+    statusCode?: number;
+    status?: string;
+    isOperational?: boolean;
+}
+
+const globalErrorHandler = (
+    err: ErrorWithStatus,
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
-    console.error('Error:', err);
+    let statusCode = err.statusCode || 500;
+    let message = err.message || 'Internal Server Error';
 
-    // Prisma Errors
+    // Prisma specific errors
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
         switch (err.code) {
             case 'P2002':
-                return ResponseHandler.error(
-                    res,
-                    `Duplicate entry: ${err.meta?.target}`,
-                    409,
-                    err
-                );
+                statusCode = 409;
+                message = `Duplicate entry error: ${err.meta?.target}`;
+                break;
             case 'P2025':
-                return ResponseHandler.error(res, 'Record not found', 404, err);
+                statusCode = 404;
+                message = 'Record not found';
+                break;
             case 'P2003':
-                return ResponseHandler.error(res, 'Foreign key constraint failed', 400, err);
+                statusCode = 400;
+                message = 'Foreign key constraint failed';
+                break;
             default:
-                return ResponseHandler.error(res, 'Database error', 400, err);
+                statusCode = 400;
+                message = `Database error: ${err.message}`;
         }
     }
 
     if (err instanceof Prisma.PrismaClientValidationError) {
-        return ResponseHandler.error(res, 'Invalid data provided', 400, err);
+        statusCode = 400;
+        message = 'Invalid data provided';
     }
 
-    // JWT Errors
+    // JWT errors
     if (err.name === 'JsonWebTokenError') {
-        return ResponseHandler.error(res, 'Invalid token', 401);
+        statusCode = 401;
+        message = 'Invalid token';
     }
 
     if (err.name === 'TokenExpiredError') {
-        return ResponseHandler.error(res, 'Token expired', 401);
+        statusCode = 401;
+        message = 'Token expired';
     }
 
-    // Default Error
-    const statusCode = err.statusCode || 500;
-    const message = err.message || 'Internal Server Error';
-
-    ResponseHandler.error(res, message, statusCode, err);
+    // Send response
+    res.status(statusCode).json({
+        success: false,
+        message,
+        statusCode,
+        error: config.nodeEnv === 'development' ? err.stack : undefined,
+        timestamp: new Date().toISOString(),
+        path: req.originalUrl,
+    });
 };
+
+export default globalErrorHandler;

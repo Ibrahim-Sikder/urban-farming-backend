@@ -1,12 +1,11 @@
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { ResponseHandler } from '../../utils/response';
-import { AuthRequest } from '../../middlewares/auth';
+import { ResponseHandler } from '../../shared/utils/response';
+import { AuthRequest } from '../../shared/middleware/auth';
 
 export class AuthController {
 
-    // Register new user
-    static async register(req: Request, res: Response) {
+    static async register(req: Request, res: Response): Promise<void> {
         try {
             const user = await AuthService.register(req.body);
             ResponseHandler.success(res, user, 'User registered successfully', 201);
@@ -15,8 +14,7 @@ export class AuthController {
         }
     }
 
-    // Login user
-    static async login(req: Request, res: Response) {
+    static async login(req: Request, res: Response): Promise<void> {
         try {
             const result = await AuthService.login(req.body);
             ResponseHandler.success(res, result, 'Login successful');
@@ -25,38 +23,46 @@ export class AuthController {
         }
     }
 
-    // Get current user profile
-    static async getProfile(req: AuthRequest, res: Response) {
+    static async getProfile(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const profile = await AuthService.getProfile(req.user!.id);
+            if (!req.user) {
+                ResponseHandler.error(res, 'User not authenticated', 401);
+                return;
+            }
+            const profile = await AuthService.getProfile(req.user.id);
             ResponseHandler.success(res, profile, 'Profile fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 404);
         }
     }
 
-    // Update profile
-    static async updateProfile(req: AuthRequest, res: Response) {
+    static async updateProfile(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const updatedUser = await AuthService.updateProfile(req.user!.id, req.body);
+            if (!req.user) {
+                ResponseHandler.error(res, 'User not authenticated', 401);
+                return;
+            }
+            const updatedUser = await AuthService.updateProfile(req.user.id, req.body);
             ResponseHandler.success(res, updatedUser, 'Profile updated successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
     }
 
-    // Change password
-    static async changePassword(req: AuthRequest, res: Response) {
+    static async changePassword(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const result = await AuthService.changePassword(req.user!.id, req.body);
+            if (!req.user) {
+                ResponseHandler.error(res, 'User not authenticated', 401);
+                return;
+            }
+            const result = await AuthService.changePassword(req.user.id, req.body);
             ResponseHandler.success(res, result, 'Password changed successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
     }
 
-    // Forgot password
-    static async forgotPassword(req: Request, res: Response) {
+    static async forgotPassword(req: Request, res: Response): Promise<void> {
         try {
             const result = await AuthService.forgotPassword(req.body.email);
             ResponseHandler.success(res, result, 'Password reset email sent');
@@ -65,8 +71,7 @@ export class AuthController {
         }
     }
 
-    // Reset password
-    static async resetPassword(req: Request, res: Response) {
+    static async resetPassword(req: Request, res: Response): Promise<void> {
         try {
             const result = await AuthService.resetPassword(req.body.token, req.body.newPassword);
             ResponseHandler.success(res, result, 'Password reset successfully');
@@ -75,8 +80,7 @@ export class AuthController {
         }
     }
 
-    // Get all users (Admin only)
-    static async getAllUsers(req: Request, res: Response) {
+    static async getAllUsers(req: Request, res: Response): Promise<void> {
         try {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 10;
@@ -87,26 +91,41 @@ export class AuthController {
             };
 
             const result = await AuthService.getAllUsers(page, limit, filters);
-            ResponseHandler.paginated(res, result.users, result.total, result.page, result.limit, 'Users fetched successfully');
+            ResponseHandler.paginated(
+                res,
+                result.users,
+                result.total,
+                result.page,
+                result.limit,
+                'Users fetched successfully'
+            );
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
     }
 
-    // Update user status (Admin only)
-    static async updateUserStatus(req: Request, res: Response) {
+    static async updateUserStatus(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const user = await AuthService.updateUserStatus(parseInt(req.params.id), req.body.status);
+            const userId = parseInt(req.params.id as string);
+            if (isNaN(userId)) {
+                ResponseHandler.error(res, 'Invalid user ID', 400);
+                return;
+            }
+            const user = await AuthService.updateUserStatus(userId, req.body.status);
             ResponseHandler.success(res, user, 'User status updated successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
     }
 
-    // Delete user (Admin only)
-    static async deleteUser(req: Request, res: Response) {
+    static async deleteUser(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const result = await AuthService.deleteUser(parseInt(req.params.id));
+            const userId = parseInt(req.params.id as string);
+            if (isNaN(userId)) {
+                ResponseHandler.error(res, 'Invalid user ID', 400);
+                return;
+            }
+            const result = await AuthService.deleteUser(userId);
             ResponseHandler.success(res, result, 'User deleted successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);

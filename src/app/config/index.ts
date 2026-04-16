@@ -6,7 +6,7 @@ dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 export const config = {
     port: parseInt(process.env.PORT || '5000'),
-    nodeEnv: process.env.NODE_ENV || 'development',
+    nodeEnv: process.env.NODE_ENV || 'development',  // ← nodeEnv (ছোট h)
     databaseUrl: process.env.DATABASE_URL!,
 
     jwt: {
@@ -34,4 +34,4 @@ if (!config.databaseUrl) {
 }
 
 console.log('✅ Config loaded successfully');
-console.log(`📦 Database URL: ${config.databaseUrl.substring(0, 50)}...`);
+console.log(`📦 Environment: ${config.nodeEnv}`);

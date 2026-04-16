@@ -61,7 +61,7 @@ const globalErrorHandler = (
         success: false,
         message,
         statusCode,
-        error: config.node_env === 'development' ? err.stack : undefined,
+        error: config.nodeEnv === 'development' ? err.stack : undefined,
         timestamp: new Date().toISOString(),
         path: req.originalUrl,
     });

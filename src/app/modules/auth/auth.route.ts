@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
-import { authenticate, authorize } from '../../middlewares/auth';
-import { validate } from '../../middlewares/validation.middleware';
-import { authLimiter } from '../../middlewares/rateLimiter';
+import { validate } from '../../shared/middleware/validation.middleware';
 import {
     registerSchema,
     loginSchema,
@@ -11,6 +9,8 @@ import {
     resetPasswordSchema,
     updateProfileSchema,
 } from './auth.validation';
+import { authLimiter } from '../../shared/middleware/rateLimiter';
+import { authenticate, authorize } from '../../shared/middleware/auth';
 
 const router = Router();
 
@@ -31,4 +31,4 @@ router.get('/users', authorize('ADMIN'), AuthController.getAllUsers);
 router.patch('/users/:id/status', authorize('ADMIN'), AuthController.updateUserStatus);
 router.delete('/users/:id', authorize('ADMIN'), AuthController.deleteUser);
 
-export default router;
+export const authRoutes = router;
