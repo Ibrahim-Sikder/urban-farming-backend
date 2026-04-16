@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
-import { config } from '@/app/config';
-
-
+import { config } from '../../config';
 
 interface ErrorWithStatus extends Error {
     statusCode?: number;
     status?: string;
     isOperational?: boolean;
+    code?: string;
+    meta?: any;
 }
 
 const globalErrorHandler = (

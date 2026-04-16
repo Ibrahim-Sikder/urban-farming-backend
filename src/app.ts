@@ -6,7 +6,7 @@ import { config } from './app/config';
 import { globalLimiter } from './app/shared/middleware/rateLimiter';
 import { notFound } from './app/shared/middleware/notFound';
 import router from './app/routes';
-import globalErrorHandler from './app/shared/middleware/errorHandler';
+import globalErrorHandler from './app/shared/middleware/globalErrorHandler';
 
 const app: Application = express();
 

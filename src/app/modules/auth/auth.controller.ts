@@ -1,3 +1,4 @@
+// modules/auth/auth.controller.ts
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { ResponseHandler } from '../../shared/utils/response';
@@ -7,7 +8,11 @@ export class AuthController {
 
     static async register(req: Request, res: Response): Promise<void> {
         try {
-            const user = await AuthService.register(req.body);
+            const user = await AuthService.register({
+                ...req.body,
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+            });
             ResponseHandler.success(res, user, 'User registered successfully', 201);
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
@@ -16,10 +21,47 @@ export class AuthController {
 
     static async login(req: Request, res: Response): Promise<void> {
         try {
-            const result = await AuthService.login(req.body);
+            const result = await AuthService.login(
+                req.body,
+                req.ip,
+                req.get('user-agent')
+            );
             ResponseHandler.success(res, result, 'Login successful');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 401);
+        }
+    }
+
+    static async refreshToken(req: Request, res: Response): Promise<void> {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken) {
+                ResponseHandler.error(res, 'Refresh token required', 400);
+                return;
+            }
+            const result = await AuthService.refreshToken(refreshToken);
+            ResponseHandler.success(res, result, 'Token refreshed successfully');
+        } catch (error: any) {
+            ResponseHandler.error(res, error.message, 401);
+        }
+    }
+
+    static async logout(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const refreshToken = req.body.refreshToken;
+            const result = await AuthService.logout(req.user!.id, refreshToken);
+            ResponseHandler.success(res, result, 'Logged out successfully');
+        } catch (error: any) {
+            ResponseHandler.error(res, error.message, 400);
+        }
+    }
+
+    static async logoutAll(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const result = await AuthService.logoutAll(req.user!.id);
+            ResponseHandler.success(res, result, 'Logged out from all devices');
+        } catch (error: any) {
+            ResponseHandler.error(res, error.message, 400);
         }
     }
 
@@ -64,7 +106,7 @@ export class AuthController {
 
     static async forgotPassword(req: Request, res: Response): Promise<void> {
         try {
-            const result = await AuthService.forgotPassword(req.body.email);
+            const result = await AuthService.forgotPassword(req.body.email, req.ip);
             ResponseHandler.success(res, result, 'Password reset email sent');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
@@ -73,14 +115,18 @@ export class AuthController {
 
     static async resetPassword(req: Request, res: Response): Promise<void> {
         try {
-            const result = await AuthService.resetPassword(req.body.token, req.body.newPassword);
+            const result = await AuthService.resetPassword(
+                req.body.token,
+                req.body.newPassword,
+                req.ip
+            );
             ResponseHandler.success(res, result, 'Password reset successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
     }
 
-    static async getAllUsers(req: Request, res: Response): Promise<void> {
+    static async getAllUsers(req: AuthRequest, res: Response): Promise<void> {
         try {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 10;
@@ -91,14 +137,7 @@ export class AuthController {
             };
 
             const result = await AuthService.getAllUsers(page, limit, filters);
-            ResponseHandler.paginated(
-                res,
-                result.users,
-                result.total,
-                result.page,
-                result.limit,
-                'Users fetched successfully'
-            );
+            ResponseHandler.success(res, result, 'Users fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
@@ -106,12 +145,12 @@ export class AuthController {
 
     static async updateUserStatus(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const userId = parseInt(req.params.id as string);
+            const userId = parseInt(req.params.id);
             if (isNaN(userId)) {
                 ResponseHandler.error(res, 'Invalid user ID', 400);
                 return;
             }
-            const user = await AuthService.updateUserStatus(userId, req.body.status);
+            const user = await AuthService.updateUserStatus(userId, req.body.status, req.user!.id);
             ResponseHandler.success(res, user, 'User status updated successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
@@ -120,12 +159,12 @@ export class AuthController {
 
     static async deleteUser(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const userId = parseInt(req.params.id as string);
+            const userId = parseInt(req.params.id);
             if (isNaN(userId)) {
                 ResponseHandler.error(res, 'Invalid user ID', 400);
                 return;
             }
-            const result = await AuthService.deleteUser(userId);
+            const result = await AuthService.deleteUser(userId, req.user!.id);
             ResponseHandler.success(res, result, 'User deleted successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);

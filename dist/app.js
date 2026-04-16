@@ -11,7 +11,7 @@ const config_1 = require("./app/config");
 const rateLimiter_1 = require("./app/shared/middleware/rateLimiter");
 const notFound_1 = require("./app/shared/middleware/notFound");
 const routes_1 = __importDefault(require("./app/routes"));
-const errorHandler_1 = __importDefault(require("./app/shared/middleware/errorHandler"));
+const globalErrorHandler_1 = __importDefault(require("./app/shared/middleware/globalErrorHandler"));
 const app = (0, express_1.default)();
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({ origin: config_1.config.cors.origin, credentials: true }));
@@ -29,6 +29,6 @@ app.get('/', (req, res) => {
 });
 app.use('/api/v1', routes_1.default);
 app.use(notFound_1.notFound);
-app.use(errorHandler_1.default);
+app.use(globalErrorHandler_1.default);
 exports.default = app;
 //# sourceMappingURL=app.js.map

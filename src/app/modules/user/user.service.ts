@@ -1,8 +1,10 @@
+// modules/user/user.service.ts
 import prisma from '../../config/prisma';
+import { DashboardStatsResponse, OrdersResponse, RentalResponse, PlantResponse } from './user.type';
 
 export class UserService {
 
-    static async getDashboardStats(userId: number) {
+    static async getDashboardStats(userId: number): Promise<DashboardStatsResponse> {
         const [
             orderCount,
             rentalCount,
@@ -32,6 +34,13 @@ export class UserService {
                 where: { userId },
                 take: 5,
                 orderBy: { createdAt: 'desc' },
+                select: {
+                    id: true,
+                    plantName: true,
+                    healthStatus: true,
+                    growthStage: true,
+                    createdAt: true,
+                },
             }),
         ]);
 
@@ -47,7 +56,7 @@ export class UserService {
         };
     }
 
-    static async getOrders(userId: number, page: number, limit: number) {
+    static async getOrders(userId: number, page: number, limit: number): Promise<OrdersResponse> {
         const skip = (page - 1) * limit;
 
         const [orders, total] = await Promise.all([
@@ -77,10 +86,16 @@ export class UserService {
             prisma.order.count({ where: { userId } }),
         ]);
 
-        return { orders, total, page, limit };
+        return {
+            orders,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
 
-    static async getRentals(userId: number) {
+    static async getRentals(userId: number): Promise<RentalResponse[]> {
         return prisma.rentalBooking.findMany({
             where: { userId },
             include: {
@@ -102,9 +117,9 @@ export class UserService {
         });
     }
 
-    static async getPlants(userId: number) {
+    static async getPlants(userId: number): Promise<PlantResponse[]> {
         return prisma.plantTracking.findMany({
-            where: { userId },
+            where: { userId, isActive: true },
             include: {
                 growthLogs: {
                     take: 5,

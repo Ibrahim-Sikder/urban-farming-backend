@@ -1,7 +1,7 @@
+// modules/user/user.routes.ts
 import { Router } from 'express';
 import { UserController } from './user.controller';
-import { authenticate } from '@/app/shared/middleware/auth';
-
+import { authenticate } from '../../shared/middleware/auth';
 
 const router = Router();
 
@@ -12,4 +12,5 @@ router.get('/orders', UserController.getOrders);
 router.get('/rentals', UserController.getRentals);
 router.get('/plants', UserController.getPlants);
 
-export default router;
+
+export const userRoutes = router;
