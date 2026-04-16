@@ -1,20 +1,11 @@
-// generator client {
-//   provider = "prisma-client"
-//   output   = "../generated/prisma"
-// }
-
-datasource db {
-  provider = "postgresql"
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// datasource db {
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
-// }
+datasource db {
+  provider = "postgresql"
+  // url      = env("DATABASE_URL")
+}
 
 enum Role {
   ADMIN
@@ -88,7 +79,7 @@ model VendorProfile {
   user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   farmName            String
   farmDescription     String?
-  farmLocation        String // JSON string
+  farmLocation        String
   certificationStatus CertificationStatus @default(PENDING)
   totalRating         Float               @default(0)
   ratingCount         Int                 @default(0)
@@ -114,10 +105,10 @@ model Produce {
   price               Float
   category            String
   subCategory         String?
-  images              String[] // Array of image URLs
+  images              String[]
   certificationStatus CertificationStatus @default(PENDING)
   availableQuantity   Int
-  unit                String              @default("kg") // kg, piece, bunch
+  unit                String              @default("kg")
   organicLabel        Boolean             @default(false)
   harvestDate         DateTime?
   expiryDate          DateTime?
@@ -137,14 +128,14 @@ model RentalSpace {
   vendor        VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   name          String
   description   String?
-  location      String // JSON string {lat, lng, address}
-  size          Float // Square feet
+  location      String
+  size          Float
   pricePerMonth Float
   soilType      String?
   sunlight      String?
   waterAccess   Boolean       @default(true)
   images        String[]
-  amenities     String[] // ["water", "electricity", "tools"]
+  amenities     String[]
   availability  Boolean       @default(true)
   isApproved    Boolean       @default(false)
   createdAt     DateTime      @default(now())
@@ -208,7 +199,7 @@ model CommunityPost {
   title      String
   content    String
   images     String[]
-  tags       String[] // ["gardening", "organic"]
+  tags       String[]
   likes      Int      @default(0)
   shares     Int      @default(0)
   isPinned   Boolean  @default(false)
@@ -246,9 +237,9 @@ model PlantTracking {
   expectedHarvestDate DateTime
   healthStatus        HealthStatus @default(HEALTHY)
   growthStage         GrowthStage  @default(SEEDLING)
-  temperature         Float? // Celsius
-  humidity            Float? // Percentage
-  soilMoisture        Float? // Percentage
+  temperature         Float?
+  humidity            Float?
+  soilMoisture        Float?
   lastWatered         DateTime?
   lastFertilized      DateTime?
   notes               String?
@@ -265,7 +256,7 @@ model GrowthLog {
   id           Int           @id @default(autoincrement())
   plantId      Int
   plant        PlantTracking @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  height       Float? // cm
+  height       Float?
   leafCount    Int?
   healthStatus HealthStatus
   growthStage  GrowthStage
@@ -286,7 +277,7 @@ model SustainabilityCert {
   expiryDate         DateTime
   documentUrl        String
   verificationStatus CertificationStatus @default(PENDING)
-  verifiedBy         Int? // Admin ID
+  verifiedBy         Int?
   verifiedAt         DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
