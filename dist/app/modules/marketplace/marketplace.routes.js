@@ -1,0 +1,27 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.marketplaceRoutes = void 0;
+const express_1 = require("express");
+const marketplace_controller_1 = require("./marketplace.controller");
+const validation_middleware_1 = require("../../shared/middleware/validation.middleware");
+const marketplace_validation_1 = require("./marketplace.validation");
+const auth_1 = require("../../shared/middleware/auth");
+const router = (0, express_1.Router)();
+router.get('/produces', (0, validation_middleware_1.validate)(marketplace_validation_1.produceFiltersSchema), marketplace_controller_1.MarketplaceController.getAllProduce);
+router.get('/produces/:id', marketplace_controller_1.MarketplaceController.getProduceById);
+router.use(auth_1.authenticate);
+router.get('/cart', (0, auth_1.authorize)('CUSTOMER'), marketplace_controller_1.MarketplaceController.getCart);
+router.post('/cart', (0, auth_1.authorize)('CUSTOMER'), (0, validation_middleware_1.validate)(marketplace_validation_1.addToCartSchema), marketplace_controller_1.MarketplaceController.addToCart);
+router.put('/cart/:itemId', (0, auth_1.authorize)('CUSTOMER'), (0, validation_middleware_1.validate)(marketplace_validation_1.updateCartItemSchema), marketplace_controller_1.MarketplaceController.updateCartItem);
+router.delete('/cart/:itemId', (0, auth_1.authorize)('CUSTOMER'), marketplace_controller_1.MarketplaceController.removeFromCart);
+router.delete('/cart', (0, auth_1.authorize)('CUSTOMER'), marketplace_controller_1.MarketplaceController.clearCart);
+router.post('/orders', (0, auth_1.authorize)('CUSTOMER'), (0, validation_middleware_1.validate)(marketplace_validation_1.createOrderSchema), marketplace_controller_1.MarketplaceController.createOrder);
+router.get('/orders', (0, auth_1.authorize)('CUSTOMER', 'VENDOR'), marketplace_controller_1.MarketplaceController.getUserOrders);
+router.get('/orders/:id', (0, auth_1.authorize)('CUSTOMER', 'VENDOR'), marketplace_controller_1.MarketplaceController.getOrderById);
+router.patch('/orders/:id/status', (0, auth_1.authorize)('VENDOR'), (0, validation_middleware_1.validate)(marketplace_validation_1.updateOrderStatusSchema), marketplace_controller_1.MarketplaceController.updateOrderStatus);
+router.post('/vendor/produces', (0, auth_1.authorize)('VENDOR'), (0, validation_middleware_1.validate)(marketplace_validation_1.createProduceSchema), marketplace_controller_1.MarketplaceController.createProduce);
+router.get('/vendor/produces', (0, auth_1.authorize)('VENDOR'), marketplace_controller_1.MarketplaceController.getVendorProduce);
+router.put('/vendor/produces/:id', (0, auth_1.authorize)('VENDOR'), (0, validation_middleware_1.validate)(marketplace_validation_1.updateProduceSchema), marketplace_controller_1.MarketplaceController.updateProduce);
+router.delete('/vendor/produces/:id', (0, auth_1.authorize)('VENDOR'), marketplace_controller_1.MarketplaceController.deleteProduce);
+exports.marketplaceRoutes = router;
+//# sourceMappingURL=marketplace.routes.js.map

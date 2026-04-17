@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.plantRoutes = void 0;
+const express_1 = require("express");
+const plant_controller_1 = require("./plant.controller");
+const validation_middleware_1 = require("../../shared/middleware/validation.middleware");
+const plant_validation_1 = require("./plant.validation");
+const auth_1 = require("../../shared/middleware/auth");
+const router = (0, express_1.Router)();
+router.use(auth_1.authenticate);
+router.use((0, auth_1.authorize)('CUSTOMER'));
+router.post('/', (0, validation_middleware_1.validate)(plant_validation_1.createPlantSchema), plant_controller_1.PlantController.createPlant);
+router.get('/', plant_controller_1.PlantController.getUserPlants);
+router.get('/stats', plant_controller_1.PlantController.getPlantStats);
+router.get('/:id', plant_controller_1.PlantController.getPlantById);
+router.put('/:id', (0, validation_middleware_1.validate)(plant_validation_1.updatePlantSchema), plant_controller_1.PlantController.updatePlant);
+router.patch('/:id/health', (0, validation_middleware_1.validate)(plant_validation_1.updateHealthStatusSchema), plant_controller_1.PlantController.updateHealthStatus);
+router.post('/:id/harvest', plant_controller_1.PlantController.markAsHarvested);
+router.delete('/:id', plant_controller_1.PlantController.deletePlant);
+exports.plantRoutes = router;
+//# sourceMappingURL=plant.routes.js.map

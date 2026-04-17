@@ -14,6 +14,8 @@ import {
 
 export class VendorService {
 
+    // ============ PROFILE MANAGEMENT ============
+
     static async getVendorProfile(userId: number): Promise<any> {
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId },
@@ -79,6 +81,8 @@ export class VendorService {
 
         return { message: 'Vendor profile updated successfully' };
     }
+
+    // ============ PRODUCE MANAGEMENT ============
 
     static async createProduce(userId: number, data: CreateProduceInput): Promise<any> {
         const vendor = await prisma.vendorProfile.findUnique({
@@ -192,6 +196,8 @@ export class VendorService {
         return { message: 'Produce deleted successfully' };
     }
 
+    // ============ RENTAL SPACE MANAGEMENT ============
+
     static async createRentalSpace(userId: number, data: CreateRentalSpaceInput): Promise<any> {
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId },
@@ -291,6 +297,8 @@ export class VendorService {
         return { message: 'Rental space deleted successfully' };
     }
 
+    // ============ CERTIFICATION MANAGEMENT ============
+
     static async submitCertification(userId: number, data: SubmitCertificationInput): Promise<MessageResponse> {
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId },
@@ -337,6 +345,8 @@ export class VendorService {
             certification: vendor.sustainabilityCert,
         };
     }
+
+    // ============ ORDER MANAGEMENT ============
 
     static async getVendorOrders(userId: number, page: number = 1, limit: number = 10, status?: string): Promise<any> {
         const vendor = await prisma.vendorProfile.findUnique({
@@ -404,6 +414,8 @@ export class VendorService {
         return { message: 'Order status updated successfully' };
     }
 
+    // ============ BOOKINGS MANAGEMENT ============
+
     static async getVendorBookings(userId: number): Promise<any[]> {
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId },
@@ -430,6 +442,8 @@ export class VendorService {
 
         return bookings;
     }
+
+    // ============ REVENUE REPORT ============
 
     static async getRevenueReport(userId: number): Promise<any> {
         const vendor = await prisma.vendorProfile.findUnique({

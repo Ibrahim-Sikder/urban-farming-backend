@@ -6,14 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebSocketManager = void 0;
 const socket_io_1 = require("socket.io");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const prisma_1 = __importDefault(require("../config/prisma"));
 const config_1 = require("../config");
+const prisma_1 = __importDefault(require("../config/prisma"));
 class WebSocketManager {
     static io;
     static initialize(server) {
         this.io = new socket_io_1.Server(server, {
             cors: {
-                origin: config_1.config.cors.origin,
+                origin: config_1.config.cors?.origin || '*',
                 credentials: true,
                 methods: ['GET', 'POST'],
             },
@@ -59,21 +59,13 @@ class WebSocketManager {
                     const plant = await prisma_1.default.plantTracking.findFirst({
                         where: {
                             id: plantId,
-                            user: { id: socket.userId },
+                            userId: socket.userId,
                         },
                     });
                     if (plant) {
                         const updated = await prisma_1.default.plantTracking.update({
                             where: { id: plantId },
                             data: { healthStatus, growthStage, notes },
-                        });
-                        await prisma_1.default.growthLog.create({
-                            data: {
-                                plantId,
-                                healthStatus,
-                                growthStage,
-                                notes,
-                            },
                         });
                         this.io.to(`plant:${plantId}`).emit('plant:updated', updated);
                     }

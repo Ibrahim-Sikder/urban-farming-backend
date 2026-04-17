@@ -6,7 +6,11 @@ const response_1 = require("../../shared/utils/response");
 class AuthController {
     static async register(req, res) {
         try {
-            const user = await auth_service_1.AuthService.register(req.body);
+            const user = await auth_service_1.AuthService.register({
+                ...req.body,
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent'),
+            });
             response_1.ResponseHandler.success(res, user, 'User registered successfully', 201);
         }
         catch (error) {
@@ -15,11 +19,44 @@ class AuthController {
     }
     static async login(req, res) {
         try {
-            const result = await auth_service_1.AuthService.login(req.body);
+            const result = await auth_service_1.AuthService.login(req.body, req.ip, req.get('user-agent'));
             response_1.ResponseHandler.success(res, result, 'Login successful');
         }
         catch (error) {
             response_1.ResponseHandler.error(res, error.message, 401);
+        }
+    }
+    static async refreshToken(req, res) {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken) {
+                response_1.ResponseHandler.error(res, 'Refresh token required', 400);
+                return;
+            }
+            const result = await auth_service_1.AuthService.refreshToken(refreshToken);
+            response_1.ResponseHandler.success(res, result, 'Token refreshed successfully');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 401);
+        }
+    }
+    static async logout(req, res) {
+        try {
+            const refreshToken = req.body.refreshToken;
+            const result = await auth_service_1.AuthService.logout(req.user.id, refreshToken);
+            response_1.ResponseHandler.success(res, result, 'Logged out successfully');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 400);
+        }
+    }
+    static async logoutAll(req, res) {
+        try {
+            const result = await auth_service_1.AuthService.logoutAll(req.user.id);
+            response_1.ResponseHandler.success(res, result, 'Logged out from all devices');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 400);
         }
     }
     static async getProfile(req, res) {
@@ -63,7 +100,7 @@ class AuthController {
     }
     static async forgotPassword(req, res) {
         try {
-            const result = await auth_service_1.AuthService.forgotPassword(req.body.email);
+            const result = await auth_service_1.AuthService.forgotPassword(req.body.email, req.ip);
             response_1.ResponseHandler.success(res, result, 'Password reset email sent');
         }
         catch (error) {
@@ -72,7 +109,7 @@ class AuthController {
     }
     static async resetPassword(req, res) {
         try {
-            const result = await auth_service_1.AuthService.resetPassword(req.body.token, req.body.newPassword);
+            const result = await auth_service_1.AuthService.resetPassword(req.body.token, req.body.newPassword, req.ip);
             response_1.ResponseHandler.success(res, result, 'Password reset successfully');
         }
         catch (error) {
@@ -89,7 +126,7 @@ class AuthController {
                 search: req.query.search,
             };
             const result = await auth_service_1.AuthService.getAllUsers(page, limit, filters);
-            response_1.ResponseHandler.paginated(res, result.users, result.total, result.page, result.limit, 'Users fetched successfully');
+            response_1.ResponseHandler.success(res, result, 'Users fetched successfully');
         }
         catch (error) {
             response_1.ResponseHandler.error(res, error.message, 400);
@@ -102,7 +139,7 @@ class AuthController {
                 response_1.ResponseHandler.error(res, 'Invalid user ID', 400);
                 return;
             }
-            const user = await auth_service_1.AuthService.updateUserStatus(userId, req.body.status);
+            const user = await auth_service_1.AuthService.updateUserStatus(userId, req.body.status, req.user.id);
             response_1.ResponseHandler.success(res, user, 'User status updated successfully');
         }
         catch (error) {
@@ -116,7 +153,7 @@ class AuthController {
                 response_1.ResponseHandler.error(res, 'Invalid user ID', 400);
                 return;
             }
-            const result = await auth_service_1.AuthService.deleteUser(userId);
+            const result = await auth_service_1.AuthService.deleteUser(userId, req.user.id);
             response_1.ResponseHandler.success(res, result, 'User deleted successfully');
         }
         catch (error) {

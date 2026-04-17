@@ -1,20 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+// prisma/seed.ts
+import { PrismaClient, Role, UserStatus, CertificationStatus, OrderStatus, HealthStatus, GrowthStage } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
-// Load environment variables
 dotenv.config();
 
 const prisma = new PrismaClient();
 
 async function main() {
     console.log('🌱 Starting seeding...');
-
-    // Check if DATABASE_URL exists
-    if (!process.env.DATABASE_URL) {
-        console.error('❌ DATABASE_URL is not defined in environment variables');
-        process.exit(1);
-    }
 
     try {
         // 1. Create Admin
@@ -26,8 +20,8 @@ async function main() {
                 name: 'Super Admin',
                 email: 'admin@urbanfarming.com',
                 password: await bcrypt.hash('Admin@123', 10),
-                role: 'ADMIN',
-                status: 'ACTIVE',
+                role: Role.ADMIN,
+                status: UserStatus.ACTIVE,
                 phoneNumber: '+8801700000000',
                 address: 'Dhaka, Bangladesh'
             }
@@ -45,8 +39,8 @@ async function main() {
                     name: `Vendor ${i}`,
                     email: `vendor${i}@urbanfarming.com`,
                     password: await bcrypt.hash('Vendor@123', 10),
-                    role: 'VENDOR',
-                    status: 'ACTIVE',
+                    role: Role.VENDOR,
+                    status: UserStatus.ACTIVE,
                     phoneNumber: `+880171000000${i}`,
                     address: `Farm Address ${i}, Dhaka`
                 }
@@ -56,55 +50,42 @@ async function main() {
                 data: {
                     userId: user.id,
                     farmName: `Organic Farm ${i}`,
-                    farmDescription: `This is a certified organic farm.`,
                     farmLocation: JSON.stringify({
                         lat: 23.8103 + (i * 0.01),
                         lng: 90.4125 + (i * 0.01),
                         address: `Dhaka, Bangladesh`
                     }),
-                    certificationStatus: 'APPROVED',
-                    isVerified: true,
-                    totalRating: 4.5,
-                    ratingCount: 10
+                    certificationStatus: CertificationStatus.APPROVED,
                 }
             });
 
-            // Sustainability certification
+            // Sustainability certification (without certificateNumber)
             await prisma.sustainabilityCert.create({
                 data: {
                     vendorId: vendor.id,
                     certifyingAgency: 'Bangladesh Organic Certification Body',
-                    certificateNumber: `ORG${i}${Date.now()}`,
                     certificationDate: new Date(),
                     expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
                     documentUrl: `https://storage.urbanfarming.com/certs/vendor${i}.pdf`,
-                    verificationStatus: 'APPROVED',
+                    verificationStatus: CertificationStatus.APPROVED,
                     verifiedBy: admin.id,
                     verifiedAt: new Date()
                 }
             });
 
-            // Create 10 rental spaces per vendor
+            // Create 10 rental spaces per vendor (without name, description, etc.)
             for (let j = 1; j <= 10; j++) {
                 await prisma.rentalSpace.create({
                     data: {
                         vendorId: vendor.id,
-                        name: `Garden Plot ${j} at ${vendor.farmName}`,
-                        description: `Beautiful ${j * 50} sq ft plot.`,
                         location: JSON.stringify({
                             lat: 23.8103 + (i * 0.01) + (j * 0.001),
                             lng: 90.4125 + (i * 0.01) + (j * 0.001),
                             address: `Plot ${j}, Dhaka`
                         }),
                         size: j * 50,
-                        pricePerMonth: 2000 + (j * 200),
-                        soilType: 'Loamy',
-                        sunlight: 'Full Sun',
-                        waterAccess: true,
-                        images: [`https://storage.urbanfarming.com/spaces/plot${j}.jpg`],
-                        amenities: ['water', 'electricity', 'tools'],
-                        availability: true,
-                        isApproved: true
+                        price: 2000 + (j * 200),
+                        availability: true
                     }
                 });
             }
@@ -121,13 +102,8 @@ async function main() {
                         description: `Fresh, chemical-free ${category}.`,
                         price: 50 + (k * 10),
                         category: category,
-                        subCategory: 'Organic',
-                        images: [`https://storage.urbanfarming.com/products/produce${k}.jpg`],
-                        certificationStatus: 'APPROVED',
+                        certificationStatus: CertificationStatus.APPROVED,
                         availableQuantity: 100 + (k * 20),
-                        unit: 'kg',
-                        organicLabel: true,
-                        harvestDate: new Date()
                     }
                 });
             }
@@ -145,8 +121,8 @@ async function main() {
                     name: `Customer ${i}`,
                     email: `customer${i}@example.com`,
                     password: await bcrypt.hash('Customer@123', 10),
-                    role: 'CUSTOMER',
-                    status: 'ACTIVE',
+                    role: Role.CUSTOMER,
+                    status: UserStatus.ACTIVE,
                     phoneNumber: `+880172000000${i}`,
                     address: `Customer Address ${i}, Dhaka`
                 }
@@ -160,30 +136,21 @@ async function main() {
                         userId: user.id,
                         plantName: `Tomato Plant ${j}`,
                         plantType: 'Tomato',
-                        variety: 'Heirloom',
                         plantedDate: new Date(Date.now() - j * 7 * 24 * 60 * 60 * 1000),
                         expectedHarvestDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                        healthStatus: 'HEALTHY',
-                        growthStage: 'VEGETATIVE',
-                        lastWatered: new Date(),
-                        notes: 'Growing well',
-                        images: []
+                        healthStatus: HealthStatus.HEALTHY,
+                        growthStage: GrowthStage.VEGETATIVE,
+                        notes: 'Growing well'
                     }
                 });
             }
 
-            // Community posts (2 each = 40)
+            // Community posts (2 each = 40) - without title, tags, etc.
             for (let j = 1; j <= 2; j++) {
                 await prisma.communityPost.create({
                     data: {
                         userId: user.id,
-                        title: `My urban gardening experience ${j}`,
-                        content: `I've been growing vegetables on my balcony for ${j} months.`,
-                        tags: ['urbanfarming', 'organic'],
-                        images: [],
-                        likes: Math.floor(Math.random() * 50),
-                        shares: Math.floor(Math.random() * 10),
-                        isApproved: true
+                        postContent: `I've been growing vegetables on my balcony for ${j} months. This is my experience with urban farming. #urbanfarming #organic`
                     }
                 });
             }
@@ -209,13 +176,9 @@ async function main() {
                             vendorId: vendor.id,
                             produceId: produce.id,
                             quantity: Math.floor(Math.random() * 5) + 1,
-                            unitPrice: produce.price,
                             totalPrice: produce.price * (Math.floor(Math.random() * 5) + 1),
-                            status: 'COMPLETED',
-                            deliveryAddress: customer.address || 'Dhaka',
-                            paymentMethod: 'bkash',
-                            paymentId: `PAY${Date.now()}${i}`,
-                            createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+                            status: OrderStatus.COMPLETED,
+                            orderDate: new Date(Date.now() - i * 24 * 60 * 60 * 1000)
                         }
                     });
                 }
@@ -245,9 +208,8 @@ async function main() {
                             userId: customer.id,
                             startDate: startDate,
                             endDate: endDate,
-                            totalPrice: rentalSpace.pricePerMonth,
-                            status: 'COMPLETED',
-                            paymentStatus: 'paid'
+                            status: OrderStatus.COMPLETED,
+                            orderDate: new Date()
                         }
                     });
                 }
@@ -255,18 +217,42 @@ async function main() {
             if (i % 10 === 0) console.log(`   Created ${i}/30 bookings`);
         }
 
+        // Create some comments for community posts
+        console.log('📝 Creating comments for community posts...');
+        const posts = await prisma.communityPost.findMany();
+        const users = await prisma.user.findMany({ where: { role: Role.CUSTOMER } });
+
+        for (let i = 0; i < 50 && i < posts.length; i++) {
+            const post = posts[i];
+            const randomUser = users[Math.floor(Math.random() * users.length)];
+
+            if (post && randomUser) {
+                await prisma.communityComment.create({
+                    data: {
+                        postId: post.id,
+                        userId: randomUser.id,
+                        content: `Great post! Thanks for sharing your experience. 👍`
+                    }
+                });
+            }
+        }
+
         // Summary
         const userCount = await prisma.user.count();
         const vendorCount = await prisma.vendorProfile.count();
         const productCount = await prisma.produce.count();
         const rentalSpaceCount = await prisma.rentalSpace.count();
+        const postCount = await prisma.communityPost.count();
+        const commentCount = await prisma.communityComment.count();
 
         console.log('\n📊 Seeding Summary:');
         console.log(`✅ Roles: ADMIN, VENDOR, CUSTOMER (3 roles)`);
-        console.log(`✅ Users: ${userCount} (1 Admin + 10 Vendors + 20 Customers = 31)`);
+        console.log(`✅ Total Users: ${userCount}`);
         console.log(`✅ Vendors: ${vendorCount} (10 - as required)`);
         console.log(`✅ Products: ${productCount} (100 - as required)`);
         console.log(`✅ Rental Spaces: ${rentalSpaceCount} (100)`);
+        console.log(`✅ Community Posts: ${postCount}`);
+        console.log(`✅ Comments: ${commentCount}`);
         console.log('\n🎉 Seeding completed successfully!');
 
     } catch (error) {

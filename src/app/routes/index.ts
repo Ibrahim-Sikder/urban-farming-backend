@@ -5,6 +5,7 @@ import { communityRoutes } from '../modules/community/community.routes';
 import { vendorRoutes } from '../modules/vendor/vendor.routes';
 import { plantRoutes } from '../modules/plant/plant.routes';
 import { rentalRoutes } from '../modules/rental/rental.routes';
+import { marketplaceRoutes } from '../modules/marketplace/marketplace.routes';
 
 
 const router = Router();
@@ -16,6 +17,7 @@ const moduleRoutes = [
     { path: '/vendors', route: vendorRoutes },
     { path: '/rental', route: rentalRoutes },
     { path: '/plants', route: plantRoutes },
+    { path: '/marketplace', route: marketplaceRoutes },
 
 ];
 

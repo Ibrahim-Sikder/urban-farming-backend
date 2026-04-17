@@ -1,0 +1,23 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.adminRoutes = void 0;
+const express_1 = require("express");
+const admin_controller_1 = require("./admin.controller");
+const validation_middleware_1 = require("../../shared/middleware/validation.middleware");
+const admin_validation_1 = require("./admin.validation");
+const auth_1 = require("../../shared/middleware/auth");
+const router = (0, express_1.Router)();
+router.use(auth_1.authenticate);
+router.use((0, auth_1.authorize)('ADMIN'));
+router.get('/dashboard/stats', (0, validation_middleware_1.validate)(admin_validation_1.dashboardFiltersSchema), admin_controller_1.AdminController.getDashboardStats);
+router.get('/users', admin_controller_1.AdminController.getAllUsers);
+router.patch('/users/:id/status', (0, validation_middleware_1.validate)(admin_validation_1.updateUserStatusSchema), admin_controller_1.AdminController.updateUserStatus);
+router.delete('/users/:id', admin_controller_1.AdminController.deleteUser);
+router.get('/vendors', admin_controller_1.AdminController.getAllVendors);
+router.patch('/vendors/:id/verify', (0, validation_middleware_1.validate)(admin_validation_1.verifyVendorSchema), admin_controller_1.AdminController.verifyVendor);
+router.get('/certifications', admin_controller_1.AdminController.getAllCertifications);
+router.patch('/certifications/:id/verify', (0, validation_middleware_1.validate)(admin_validation_1.verifyCertificationSchema), admin_controller_1.AdminController.verifyCertification);
+router.get('/rental-spaces', admin_controller_1.AdminController.getAllRentalSpaces);
+router.get('/orders', admin_controller_1.AdminController.getAllOrders);
+exports.adminRoutes = router;
+//# sourceMappingURL=admin.routes.js.map

@@ -1,3 +1,4 @@
+// modules/vendor/vendor.controller.ts
 import { Response } from 'express';
 import { VendorService } from './vendor.service';
 import { AuthRequest } from '../../shared/middleware/auth';
@@ -134,10 +135,8 @@ export class VendorController {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 10;
             const status = req.query.status as string;
-            const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
-            const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
 
-            const result = await VendorService.getVendorOrders(req.user!.id, page, limit, status, startDate, endDate);
+            const result = await VendorService.getVendorOrders(req.user!.id, page, limit, status);
             ResponseHandler.success(res, result, 'Orders fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
@@ -169,8 +168,7 @@ export class VendorController {
 
     static async getRevenueReport(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const period = (req.query.period as 'daily' | 'weekly' | 'monthly') || 'monthly';
-            const report = await VendorService.getRevenueReport(req.user!.id, period);
+            const report = await VendorService.getRevenueReport(req.user!.id);
             ResponseHandler.success(res, report, 'Revenue report generated successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);

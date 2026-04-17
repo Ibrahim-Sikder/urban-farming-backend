@@ -60,7 +60,7 @@ export class AdminService {
             totalRevenue: totalRevenue._sum.totalPrice || 0,
             pendingVendors,
             pendingCertifications,
-            pendingRentalSpaces: 0, // Your schema doesn't have approval system for rental spaces
+            pendingRentalSpaces: 0,
             recentOrders,
             recentUsers
         };
@@ -222,7 +222,6 @@ export class AdminService {
             data: {
                 verificationStatus: status,
                 verifiedAt: new Date(),
-                verificationNotes: verificationNotes || null
             },
             include: { vendor: { include: { user: true } } }
         });
@@ -253,7 +252,6 @@ export class AdminService {
     }
 
     // ============ RENTAL SPACE MANAGEMENT ============
-    // Note: Your schema doesn't have isApproved field, so vendors can directly list spaces
     static async getAllRentalSpaces(page: number = 1, limit: number = 10) {
         const skip = (page - 1) * limit;
 
@@ -272,7 +270,6 @@ export class AdminService {
             prisma.rentalSpace.count()
         ]);
 
-        // Transform spaces to include vendor info
         const transformedSpaces = spaces.map(space => ({
             id: space.id,
             vendorId: space.vendorId,
@@ -295,11 +292,6 @@ export class AdminService {
 
         return { spaces: transformedSpaces, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
-
-    // Note: Since no isApproved field, this method is removed
-    // static async approveRentalSpace(spaceId: number, isApproved: boolean, rejectionReason?: string) {
-    //     // This feature is not available in your schema
-    // }
 
     // ============ ORDER MANAGEMENT ============
     static async getAllOrders(page: number = 1, limit: number = 10, status?: string) {

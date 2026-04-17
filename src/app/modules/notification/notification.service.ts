@@ -49,7 +49,7 @@ export class NotificationService {
                 userId,
                 isRead: false,
             },
-            data: { isRead: true, readAt: new Date() },
+            data: { isRead: true },
         });
 
         return {
@@ -66,7 +66,7 @@ export class NotificationService {
 
         const result = await prisma.notification.updateMany({
             where,
-            data: { isRead: true, readAt: new Date() },
+            data: { isRead: true },
         });
 
         return {
@@ -115,7 +115,6 @@ export class NotificationService {
         return { unreadCount: count };
     }
 
-    // Helper method to create notification (used by other modules)
     static async createNotification(
         userId: number,
         title: string,

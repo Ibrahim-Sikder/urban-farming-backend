@@ -1,10 +1,9 @@
+// modules/websocket/socket.ts
 import { Server as HttpServer } from 'http';
 import { Server as SocketServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-
-import prisma from '../config/prisma';
 import { config } from '../config';
-
+import prisma from '../config/prisma';
 
 interface SocketWithUser extends Socket {
     userId?: number;
@@ -16,7 +15,7 @@ export class WebSocketManager {
     static initialize(server: HttpServer) {
         this.io = new SocketServer(server, {
             cors: {
-                origin: config.cors.origin,
+                origin: config.cors?.origin || '*',
                 credentials: true,
                 methods: ['GET', 'POST'],
             },
@@ -76,7 +75,7 @@ export class WebSocketManager {
                     const plant = await prisma.plantTracking.findFirst({
                         where: {
                             id: plantId,
-                            user: { id: socket.userId },
+                            userId: socket.userId,
                         },
                     });
 
@@ -86,16 +85,7 @@ export class WebSocketManager {
                             data: { healthStatus, growthStage, notes },
                         });
 
-                        // Add growth log
-                        await prisma.growthLog.create({
-                            data: {
-                                plantId,
-                                healthStatus,
-                                growthStage,
-                                notes,
-                            },
-                        });
-
+                        // Note: growthLog table doesn't exist in schema, so skip it
                         // Broadcast to all trackers
                         this.io.to(`plant:${plantId}`).emit('plant:updated', updated);
                     }

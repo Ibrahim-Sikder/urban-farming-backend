@@ -15,12 +15,13 @@ class UserService {
             prisma_1.default.order.findMany({
                 where: { userId },
                 take: 5,
-                orderBy: { createdAt: 'desc' },
+                orderBy: {
+                    orderDate: 'desc'
+                },
                 include: {
                     produce: {
                         select: {
                             name: true,
-                            images: true,
                         },
                     },
                 },
@@ -28,7 +29,16 @@ class UserService {
             prisma_1.default.plantTracking.findMany({
                 where: { userId },
                 take: 5,
-                orderBy: { createdAt: 'desc' },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                select: {
+                    id: true,
+                    plantName: true,
+                    healthStatus: true,
+                    growthStage: true,
+                    plantedDate: true,
+                },
             }),
         ]);
         return {
@@ -38,7 +48,15 @@ class UserService {
                 totalPlants: plantCount,
                 totalPosts: postCount,
             },
-            recentOrders,
+            recentOrders: recentOrders.map(order => ({
+                id: order.id,
+                totalPrice: order.totalPrice,
+                status: order.status,
+                orderDate: order.orderDate,
+                produce: {
+                    name: order.produce.name,
+                },
+            })),
             recentPlants,
         };
     }
@@ -49,19 +67,15 @@ class UserService {
                 where: { userId },
                 skip,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy: {
+                    orderDate: 'desc'
+                },
                 include: {
                     produce: {
-                        select: {
-                            name: true,
-                            images: true,
+                        include: {
                             vendor: {
-                                include: {
-                                    user: {
-                                        select: {
-                                            name: true,
-                                        },
-                                    },
+                                select: {
+                                    farmName: true,
                                 },
                             },
                         },
@@ -70,40 +84,75 @@ class UserService {
             }),
             prisma_1.default.order.count({ where: { userId } }),
         ]);
-        return { orders, total, page, limit };
+        return {
+            orders: orders.map(order => ({
+                id: order.id,
+                quantity: order.quantity,
+                totalPrice: order.totalPrice,
+                status: order.status,
+                orderDate: order.orderDate,
+                produce: {
+                    name: order.produce.name,
+                    vendor: {
+                        farmName: order.produce.vendor.farmName,
+                    },
+                },
+            })),
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
     static async getRentals(userId) {
-        return prisma_1.default.rentalBooking.findMany({
+        const rentals = await prisma_1.default.rentalBooking.findMany({
             where: { userId },
             include: {
                 space: {
-                    include: {
-                        vendor: {
-                            include: {
-                                user: {
-                                    select: {
-                                        name: true,
-                                    },
-                                },
-                            },
-                        },
+                    select: {
+                        location: true,
+                        size: true,
+                        price: true,
                     },
                 },
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: {
+                orderDate: 'desc'
+            },
         });
+        return rentals.map(rental => ({
+            id: rental.id,
+            startDate: rental.startDate,
+            endDate: rental.endDate,
+            status: rental.status,
+            orderDate: rental.orderDate,
+            space: {
+                location: rental.space.location,
+                size: rental.space.size,
+                price: rental.space.price,
+            },
+        }));
     }
     static async getPlants(userId) {
-        return prisma_1.default.plantTracking.findMany({
+        const plants = await prisma_1.default.plantTracking.findMany({
             where: { userId },
-            include: {
-                growthLogs: {
-                    take: 5,
-                    orderBy: { recordedAt: 'desc' },
-                },
+            orderBy: {
+                lastUpdated: 'desc'
             },
-            orderBy: { updatedAt: 'desc' },
         });
+        return plants.map(plant => ({
+            id: plant.id,
+            plantName: plant.plantName,
+            plantType: plant.plantType,
+            plantedDate: plant.plantedDate,
+            expectedHarvestDate: plant.expectedHarvestDate,
+            actualHarvestDate: plant.actualHarvestDate || undefined,
+            healthStatus: plant.healthStatus,
+            growthStage: plant.growthStage,
+            notes: plant.notes || undefined,
+            lastUpdated: plant.lastUpdated,
+            createdAt: plant.createdAt,
+        }));
     }
 }
 exports.UserService = UserService;

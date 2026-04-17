@@ -1,0 +1,20 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.communityRoutes = void 0;
+const express_1 = require("express");
+const community_controller_1 = require("./community.controller");
+const validation_middleware_1 = require("../../shared/middleware/validation.middleware");
+const community_validation_1 = require("./community.validation");
+const auth_1 = require("../../shared/middleware/auth");
+const router = (0, express_1.Router)();
+router.get('/posts', (0, validation_middleware_1.validate)(community_validation_1.postFiltersSchema), community_controller_1.CommunityController.getAllPosts);
+router.get('/posts/:id', community_controller_1.CommunityController.getPostById);
+router.get('/posts/:postId/comments', community_controller_1.CommunityController.getComments);
+router.use(auth_1.authenticate);
+router.post('/posts', (0, validation_middleware_1.validate)(community_validation_1.createPostSchema), community_controller_1.CommunityController.createPost);
+router.put('/posts/:id', (0, validation_middleware_1.validate)(community_validation_1.updatePostSchema), community_controller_1.CommunityController.updatePost);
+router.delete('/posts/:id', community_controller_1.CommunityController.deletePost);
+router.post('/posts/:postId/comments', (0, validation_middleware_1.validate)(community_validation_1.createCommentSchema), community_controller_1.CommunityController.createComment);
+router.delete('/comments/:commentId', community_controller_1.CommunityController.deleteComment);
+exports.communityRoutes = router;
+//# sourceMappingURL=community.routes.js.map
