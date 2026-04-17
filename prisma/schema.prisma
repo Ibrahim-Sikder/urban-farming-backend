@@ -75,6 +75,7 @@ model User {
   auditLogs           AuditLog[]
   notifications       Notification[]
   communityComments   CommunityComment[]
+  cartItems           CartItem[]
 
   @@index([email])
   @@index([role])
@@ -114,8 +115,9 @@ model Produce {
   updatedAt           DateTime            @updatedAt
 
   // Relations
-  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  orders Order[]
+  vendor    VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  cartItems CartItem[]
 
   @@index([vendorId])
   @@index([category])
@@ -178,6 +180,20 @@ model Order {
   @@index([vendorId])
   @@index([status])
   @@index([orderDate])
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  produceId Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  produce Produce @relation(fields: [produceId], references: [id])
+
+  @@unique([userId, produceId])
 }
 
 model CommunityPost {

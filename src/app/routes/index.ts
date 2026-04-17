@@ -6,6 +6,7 @@ import { vendorRoutes } from '../modules/vendor/vendor.routes';
 import { plantRoutes } from '../modules/plant/plant.routes';
 import { rentalRoutes } from '../modules/rental/rental.routes';
 import { marketplaceRoutes } from '../modules/marketplace/marketplace.routes';
+import { benchmarkRoutes } from '../modules/benchmark/benchmark.routes';
 
 
 const router = Router();
@@ -18,6 +19,7 @@ const moduleRoutes = [
     { path: '/rental', route: rentalRoutes },
     { path: '/plants', route: plantRoutes },
     { path: '/marketplace', route: marketplaceRoutes },
+    { path: '/benchmark', route: benchmarkRoutes }
 
 ];
 
