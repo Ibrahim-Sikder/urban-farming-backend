@@ -8,7 +8,7 @@ import {
     createCommentSchema,
     postFiltersSchema,
 } from './community.validation';
-import { authenticate, authorize } from '../../shared/middleware/auth';
+import { authenticate } from '../../shared/middleware/auth';
 
 const router = Router();
 
@@ -25,18 +25,8 @@ router.post('/posts', validate(createPostSchema), CommunityController.createPost
 router.put('/posts/:id', validate(updatePostSchema), CommunityController.updatePost);
 router.delete('/posts/:id', CommunityController.deletePost);
 
-// Post Interactions
-router.post('/posts/:id/like', CommunityController.likePost);
-router.delete('/posts/:id/like', CommunityController.unlikePost);
-router.post('/posts/:id/share', CommunityController.sharePost);
-
 // Comment Routes
 router.post('/posts/:postId/comments', validate(createCommentSchema), CommunityController.createComment);
 router.delete('/comments/:commentId', CommunityController.deleteComment);
-router.post('/comments/:commentId/like', CommunityController.likeComment);
-
-// ============ ADMIN ONLY ROUTES ============
-router.patch('/admin/posts/:id/moderate', authorize('ADMIN'), CommunityController.moderatePost);
-router.patch('/admin/posts/:id/pin', authorize('ADMIN'), CommunityController.pinPost);
 
 export const communityRoutes = router;

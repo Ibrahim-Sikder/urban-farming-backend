@@ -6,7 +6,8 @@ import {
     CreateCommentInput,
     PostFilters,
     PostResponse,
-    PaginatedPostsResponse
+    PaginatedPostsResponse,
+    CommentResponse
 } from './community.type';
 
 export class CommunityService {
@@ -17,57 +18,33 @@ export class CommunityService {
         const post = await prisma.communityPost.create({
             data: {
                 userId,
-                title: data.title,
-                content: data.content,
-                images: data.images || [],
-                tags: data.tags || [],
+                postContent: data.postContent,
             },
             include: {
                 user: {
                     select: {
                         id: true,
                         name: true,
+                        email: true,
                         profileImage: true,
-                        role: true,
-                    }
-                },
-                comments: {
-                    take: 5,
-                    orderBy: { createdAt: 'desc' },
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                                profileImage: true,
-                            }
-                        }
                     }
                 }
             }
         });
 
-        await prisma.auditLog.create({
-            data: {
-                userId,
-                action: 'CREATE_POST',
-                entity: 'CommunityPost',
-                entityId: post.id,
-            },
-        });
-
         return {
-            ...post,
-            commentCount: post.comments.length,
-        } as PostResponse;
+            id: post.id,
+            postContent: post.postContent,
+            postDate: post.postDate,
+            updatedAt: post.updatedAt,
+            user: post.user,
+            commentCount: 0,
+        };
     }
 
     static async updatePost(userId: number, postId: number, data: UpdatePostInput): Promise<PostResponse> {
         const post = await prisma.communityPost.findFirst({
-            where: {
-                id: postId,
-                userId,
-            }
+            where: { id: postId, userId },
         });
 
         if (!post) {
@@ -77,40 +54,32 @@ export class CommunityService {
         const updated = await prisma.communityPost.update({
             where: { id: postId },
             data: {
-                title: data.title,
-                content: data.content,
-                images: data.images,
-                tags: data.tags,
+                postContent: data.postContent,
             },
             include: {
                 user: {
                     select: {
                         id: true,
                         name: true,
+                        email: true,
                         profileImage: true,
-                        role: true,
-                    }
-                },
-                comments: {
-                    take: 5,
-                    orderBy: { createdAt: 'desc' },
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                                profileImage: true,
-                            }
-                        }
                     }
                 }
             }
         });
 
+        const commentCount = await prisma.$queryRaw`
+            SELECT COUNT(*) FROM "CommunityComment" WHERE "postId" = ${postId}
+        `;
+
         return {
-            ...updated,
-            commentCount: updated.comments.length,
-        } as PostResponse;
+            id: updated.id,
+            postContent: updated.postContent,
+            postDate: updated.postDate,
+            updatedAt: updated.updatedAt,
+            user: updated.user,
+            commentCount: Number(commentCount[0]?.count) || 0,
+        };
     }
 
     static async getAllPosts(filters: PostFilters): Promise<PaginatedPostsResponse> {
@@ -118,29 +87,10 @@ export class CommunityService {
         const limit = filters.limit || 10;
         const skip = (page - 1) * limit;
 
-        const where: any = { isApproved: true };
+        const where: any = {};
 
         if (filters.search) {
-            where.OR = [
-                { title: { contains: filters.search, mode: 'insensitive' } },
-                { content: { contains: filters.search, mode: 'insensitive' } },
-            ];
-        }
-
-        if (filters.tags) {
-            where.tags = { has: filters.tags };
-        }
-
-        let orderBy: any = { createdAt: 'desc' };
-
-        if (filters.sortBy === 'popular') {
-            orderBy = { likes: 'desc' };
-        } else if (filters.sortBy === 'trending') {
-            orderBy = [
-                { likes: 'desc' },
-                { viewCount: 'desc' },
-                { createdAt: 'desc' }
-            ];
+            where.postContent = { contains: filters.search, mode: 'insensitive' };
         }
 
         const [posts, total] = await Promise.all([
@@ -153,45 +103,35 @@ export class CommunityService {
                         select: {
                             id: true,
                             name: true,
+                            email: true,
                             profileImage: true,
-                            role: true,
                         }
-                    },
-                    comments: {
-                        take: 3,
-                        orderBy: { createdAt: 'desc' },
-                        include: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    profileImage: true,
-                                }
-                            }
-                        }
-                    },
-                    _count: {
-                        select: { comments: true }
                     }
                 },
-                orderBy,
+                orderBy: { postDate: 'desc' },
             }),
             prisma.communityPost.count({ where }),
         ]);
 
-        // Increment view count for each post (async, don't await)
-        posts.forEach(post => {
-            prisma.communityPost.update({
-                where: { id: post.id },
-                data: { viewCount: { increment: 1 } }
-            }).catch(() => { });
-        });
+        // Get comment counts for each post
+        const postsWithCounts = await Promise.all(
+            posts.map(async (post) => {
+                const commentCount = await prisma.$queryRaw`
+                    SELECT COUNT(*) FROM "CommunityComment" WHERE "postId" = ${post.id}
+                `;
+                return {
+                    id: post.id,
+                    postContent: post.postContent,
+                    postDate: post.postDate,
+                    updatedAt: post.updatedAt,
+                    user: post.user,
+                    commentCount: Number(commentCount[0]?.count) || 0,
+                };
+            })
+        );
 
         return {
-            posts: posts.map(post => ({
-                ...post,
-                commentCount: post._count.comments,
-            })) as PostResponse[],
+            posts: postsWithCounts,
             total,
             page,
             limit,
@@ -199,52 +139,17 @@ export class CommunityService {
         };
     }
 
-    static async getPostById(postId: number): Promise<PostResponse> {
+    static async getPostById(postId: number): Promise<PostResponse & { comments: CommentResponse[] }> {
         const post = await prisma.communityPost.findFirst({
-            where: {
-                id: postId,
-                isApproved: true,
-            },
+            where: { id: postId },
             include: {
                 user: {
                     select: {
                         id: true,
                         name: true,
+                        email: true,
                         profileImage: true,
-                        role: true,
                     }
-                },
-                comments: {
-                    where: { parentId: null },
-                    orderBy: { createdAt: 'asc' },
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                                profileImage: true,
-                            }
-                        },
-                        _count: {
-                            select: { replies: true }
-                        },
-                        replies: {
-                            take: 10,
-                            orderBy: { createdAt: 'asc' },
-                            include: {
-                                user: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        profileImage: true,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                _count: {
-                    select: { comments: true }
                 }
             }
         });
@@ -253,16 +158,39 @@ export class CommunityService {
             throw new Error('Post not found');
         }
 
-        // Increment view count
-        await prisma.communityPost.update({
-            where: { id: postId },
-            data: { viewCount: { increment: 1 } }
-        });
+        const comments = await prisma.$queryRaw`
+            SELECT cc.id, cc.content, cc."createdAt", 
+                   u.id as user_id, u.name as user_name, u."profileImage" as user_profileImage
+            FROM "CommunityComment" cc
+            JOIN "User" u ON cc."userId" = u.id
+            WHERE cc."postId" = ${postId}
+            ORDER BY cc."createdAt" ASC
+        `;
+
+        const commentCount = await prisma.$queryRaw`
+            SELECT COUNT(*) FROM "CommunityComment" WHERE "postId" = ${postId}
+        `;
+
+        const formattedComments = (comments as any[]).map(comment => ({
+            id: comment.id,
+            content: comment.content,
+            createdAt: comment.createdAt,
+            user: {
+                id: comment.user_id,
+                name: comment.user_name,
+                profileImage: comment.user_profileImage,
+            },
+        }));
 
         return {
-            ...post,
-            commentCount: post._count.comments,
-        } as PostResponse;
+            id: post.id,
+            postContent: post.postContent,
+            postDate: post.postDate,
+            updatedAt: post.updatedAt,
+            user: post.user,
+            commentCount: Number(commentCount[0]?.count) || 0,
+            comments: formattedComments,
+        };
     }
 
     static async deletePost(userId: number, postId: number, isAdmin: boolean = false): Promise<{ message: string }> {
@@ -278,232 +206,109 @@ export class CommunityService {
             throw new Error('Post not found or unauthorized');
         }
 
-        await prisma.communityPost.delete({ where: { id: postId } });
+        // Delete all comments first
+        await prisma.$executeRaw`DELETE FROM "CommunityComment" WHERE "postId" = ${postId}`;
 
-        await prisma.auditLog.create({
-            data: {
-                userId,
-                action: 'DELETE_POST',
-                entity: 'CommunityPost',
-                entityId: postId,
-            },
-        });
+        // Delete the post
+        await prisma.communityPost.delete({ where: { id: postId } });
 
         return { message: 'Post deleted successfully' };
     }
 
-    // ============ POST INTERACTIONS ============
-
-    static async likePost(userId: number, postId: number): Promise<{ likes: number }> {
-        const post = await prisma.communityPost.findFirst({
-            where: { id: postId, isApproved: true }
-        });
-
-        if (!post) {
-            throw new Error('Post not found');
-        }
-
-        // Check if already liked (simplified - you'd want a separate Like table)
-        const updated = await prisma.communityPost.update({
-            where: { id: postId },
-            data: { likes: { increment: 1 } }
-        });
-
-        await prisma.notification.create({
-            data: {
-                userId: post.userId,
-                title: 'Post Liked',
-                message: `Someone liked your post "${post.title.substring(0, 50)}"`,
-                type: 'SYSTEM',
-            },
-        });
-
-        return { likes: updated.likes };
-    }
-
-    static async unlikePost(userId: number, postId: number): Promise<{ likes: number }> {
-        const post = await prisma.communityPost.findFirst({
-            where: { id: postId, isApproved: true }
-        });
-
-        if (!post) {
-            throw new Error('Post not found');
-        }
-
-        const updated = await prisma.communityPost.update({
-            where: { id: postId },
-            data: { likes: { decrement: 1 } }
-        });
-
-        return { likes: updated.likes };
-    }
-
-    static async sharePost(userId: number, postId: number): Promise<{ shares: number }> {
-        const post = await prisma.communityPost.findFirst({
-            where: { id: postId, isApproved: true }
-        });
-
-        if (!post) {
-            throw new Error('Post not found');
-        }
-
-        const updated = await prisma.communityPost.update({
-            where: { id: postId },
-            data: { shares: { increment: 1 } }
-        });
-
-        return { shares: updated.shares };
-    }
-
     // ============ COMMENT MANAGEMENT ============
 
-    static async createComment(userId: number, postId: number, data: CreateCommentInput): Promise<any> {
+    static async createComment(userId: number, postId: number, data: CreateCommentInput): Promise<CommentResponse> {
         const post = await prisma.communityPost.findFirst({
-            where: { id: postId, isApproved: true }
+            where: { id: postId }
         });
 
         if (!post) {
             throw new Error('Post not found');
         }
 
-        const comment = await prisma.communityComment.create({
-            data: {
-                postId,
-                userId,
-                content: data.content,
-                parentId: data.parentId,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        profileImage: true,
-                    }
-                }
-            }
-        });
+        const comment = await prisma.$executeRaw`
+            INSERT INTO "CommunityComment" ("postId", "userId", content, "createdAt")
+            VALUES (${postId}, ${userId}, ${data.content}, NOW())
+            RETURNING id, content, "createdAt"
+        `;
 
-        await prisma.notification.create({
-            data: {
-                userId: post.userId,
-                title: 'New Comment',
-                message: `Someone commented on your post "${post.title.substring(0, 50)}"`,
-                type: 'SYSTEM',
-            },
-        });
+        const commentResult = await prisma.$queryRaw`
+            SELECT cc.id, cc.content, cc."createdAt", 
+                   u.id as user_id, u.name as user_name, u."profileImage" as user_profileImage
+            FROM "CommunityComment" cc
+            JOIN "User" u ON cc."userId" = u.id
+            WHERE cc."postId" = ${postId} AND cc."userId" = ${userId}
+            ORDER BY cc."createdAt" DESC
+            LIMIT 1
+        `;
 
-        return comment;
+        const newComment = (commentResult as any[])[0];
+
+        return {
+            id: newComment.id,
+            content: newComment.content,
+            createdAt: newComment.createdAt,
+            user: {
+                id: newComment.user_id,
+                name: newComment.user_name,
+                profileImage: newComment.user_profileImage,
+            },
+        };
     }
 
     static async getComments(postId: number, page: number = 1, limit: number = 20): Promise<any> {
         const skip = (page - 1) * limit;
 
         const [comments, total] = await Promise.all([
-            prisma.communityComment.findMany({
-                where: {
-                    postId,
-                    parentId: null,
-                },
-                skip,
-                take: limit,
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            profileImage: true,
-                        }
-                    },
-                    replies: {
-                        take: 10,
-                        orderBy: { createdAt: 'asc' },
-                        include: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    profileImage: true,
-                                }
-                            }
-                        }
-                    }
-                },
-                orderBy: { createdAt: 'asc' },
-            }),
-            prisma.communityComment.count({
-                where: { postId, parentId: null }
-            }),
+            prisma.$queryRaw`
+                SELECT cc.id, cc.content, cc."createdAt", 
+                       u.id as user_id, u.name as user_name, u."profileImage" as user_profileImage
+                FROM "CommunityComment" cc
+                JOIN "User" u ON cc."userId" = u.id
+                WHERE cc."postId" = ${postId}
+                ORDER BY cc."createdAt" ASC
+                LIMIT ${limit} OFFSET ${skip}
+            `,
+            prisma.$queryRaw`
+                SELECT COUNT(*) as count FROM "CommunityComment" WHERE "postId" = ${postId}
+            `,
         ]);
 
+        const formattedComments = (comments as any[]).map(comment => ({
+            id: comment.id,
+            content: comment.content,
+            createdAt: comment.createdAt,
+            user: {
+                id: comment.user_id,
+                name: comment.user_name,
+                profileImage: comment.user_profileImage,
+            },
+        }));
+
         return {
-            comments,
-            total,
+            comments: formattedComments,
+            total: Number((total as any[])[0]?.count) || 0,
             page,
             limit,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil(Number((total as any[])[0]?.count) / limit),
         };
     }
 
     static async deleteComment(userId: number, commentId: number, isAdmin: boolean = false): Promise<{ message: string }> {
-        const where: any = { id: commentId };
+        const whereClause = isAdmin
+            ? `id = ${commentId}`
+            : `id = ${commentId} AND "userId" = ${userId}`;
 
-        if (!isAdmin) {
-            where.userId = userId;
-        }
+        const comment = await prisma.$queryRaw`
+            SELECT id FROM "CommunityComment" WHERE ${whereClause}
+        `;
 
-        const comment = await prisma.communityComment.findFirst({ where });
-
-        if (!comment) {
+        if ((comment as any[]).length === 0) {
             throw new Error('Comment not found or unauthorized');
         }
 
-        await prisma.communityComment.delete({ where: { id: commentId } });
+        await prisma.$executeRaw`DELETE FROM "CommunityComment" WHERE id = ${commentId}`;
 
         return { message: 'Comment deleted successfully' };
-    }
-
-    static async likeComment(userId: number, commentId: number): Promise<{ likes: number }> {
-        const updated = await prisma.communityComment.update({
-            where: { id: commentId },
-            data: { likes: { increment: 1 } }
-        });
-
-        return { likes: updated.likes };
-    }
-
-    // ============ ADMIN OPERATIONS ============
-
-    static async moderatePost(adminId: number, postId: number, isApproved: boolean, rejectionReason?: string): Promise<any> {
-        const post = await prisma.communityPost.update({
-            where: { id: postId },
-            data: {
-                isApproved,
-                approvedBy: adminId,
-                approvedAt: new Date(),
-            }
-        });
-
-        await prisma.notification.create({
-            data: {
-                userId: post.userId,
-                title: isApproved ? 'Post Approved' : 'Post Rejected',
-                message: isApproved
-                    ? 'Your post has been approved and is now visible'
-                    : `Your post was rejected. Reason: ${rejectionReason || 'Content policy violation'}`,
-                type: 'SYSTEM',
-            },
-        });
-
-        return post;
-    }
-
-    static async pinPost(adminId: number, postId: number, isPinned: boolean): Promise<any> {
-        const post = await prisma.communityPost.update({
-            where: { id: postId },
-            data: { isPinned }
-        });
-
-        return post;
     }
 }

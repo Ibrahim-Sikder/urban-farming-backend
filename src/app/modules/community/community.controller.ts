@@ -33,8 +33,6 @@ export class CommunityController {
                 page: req.query.page ? parseInt(req.query.page as string) : 1,
                 limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
                 search: req.query.search as string,
-                tags: req.query.tags as string,
-                sortBy: req.query.sortBy as any,
             };
             const result = await CommunityService.getAllPosts(filters);
             ResponseHandler.success(res, result, 'Posts fetched successfully');
@@ -59,38 +57,6 @@ export class CommunityController {
             const isAdmin = req.user!.role === 'ADMIN';
             const result = await CommunityService.deletePost(req.user!.id, postId, isAdmin);
             ResponseHandler.success(res, result, 'Post deleted successfully');
-        } catch (error: any) {
-            ResponseHandler.error(res, error.message, 400);
-        }
-    }
-
-    // ============ POST INTERACTIONS ============
-
-    static async likePost(req: AuthRequest, res: Response): Promise<void> {
-        try {
-            const postId = parseInt(req.params.id);
-            const result = await CommunityService.likePost(req.user!.id, postId);
-            ResponseHandler.success(res, result, 'Post liked successfully');
-        } catch (error: any) {
-            ResponseHandler.error(res, error.message, 400);
-        }
-    }
-
-    static async unlikePost(req: AuthRequest, res: Response): Promise<void> {
-        try {
-            const postId = parseInt(req.params.id);
-            const result = await CommunityService.unlikePost(req.user!.id, postId);
-            ResponseHandler.success(res, result, 'Post unliked successfully');
-        } catch (error: any) {
-            ResponseHandler.error(res, error.message, 400);
-        }
-    }
-
-    static async sharePost(req: AuthRequest, res: Response): Promise<void> {
-        try {
-            const postId = parseInt(req.params.id);
-            const result = await CommunityService.sharePost(req.user!.id, postId);
-            ResponseHandler.success(res, result, 'Post shared successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
@@ -126,40 +92,6 @@ export class CommunityController {
             const isAdmin = req.user!.role === 'ADMIN';
             const result = await CommunityService.deleteComment(req.user!.id, commentId, isAdmin);
             ResponseHandler.success(res, result, 'Comment deleted successfully');
-        } catch (error: any) {
-            ResponseHandler.error(res, error.message, 400);
-        }
-    }
-
-    static async likeComment(req: AuthRequest, res: Response): Promise<void> {
-        try {
-            const commentId = parseInt(req.params.commentId);
-            const result = await CommunityService.likeComment(req.user!.id, commentId);
-            ResponseHandler.success(res, result, 'Comment liked successfully');
-        } catch (error: any) {
-            ResponseHandler.error(res, error.message, 400);
-        }
-    }
-
-    // ============ ADMIN CONTROLLERS ============
-
-    static async moderatePost(req: AuthRequest, res: Response): Promise<void> {
-        try {
-            const postId = parseInt(req.params.id);
-            const { isApproved, rejectionReason } = req.body;
-            const result = await CommunityService.moderatePost(req.user!.id, postId, isApproved, rejectionReason);
-            ResponseHandler.success(res, result, 'Post moderated successfully');
-        } catch (error: any) {
-            ResponseHandler.error(res, error.message, 400);
-        }
-    }
-
-    static async pinPost(req: AuthRequest, res: Response): Promise<void> {
-        try {
-            const postId = parseInt(req.params.id);
-            const { isPinned } = req.body;
-            const result = await CommunityService.pinPost(req.user!.id, postId, isPinned);
-            ResponseHandler.success(res, result, `Post ${isPinned ? 'pinned' : 'unpinned'} successfully`);
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }
