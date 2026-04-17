@@ -11,7 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:reset": "prisma migrate reset",
-   "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -23,6 +23,7 @@
     "express-rate-limit": "^7.5.1",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^3.3.2",
     "prisma": "^5.22.0",
     "socket.io": "^4.8.3",
     "zod": "^3.25.76"
