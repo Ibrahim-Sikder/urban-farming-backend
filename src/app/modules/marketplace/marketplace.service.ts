@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
+import socketService from '../../services/socket.service';
 import { CertificationStatus, OrderStatus } from '@prisma/client';
 import {
     CreateProduceInput,
@@ -20,7 +21,6 @@ export class MarketplaceService {
     // ============ PRODUCE MANAGEMENT (VENDOR) ============
 
     static async createProduce(vendorUserId: number, data: CreateProduceInput): Promise<ProduceResponse> {
-        // Get vendor profile
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId: vendorUserId },
             select: { id: true, certificationStatus: true, farmName: true }
@@ -51,7 +51,6 @@ export class MarketplaceService {
             }
         });
 
-        // Clear cache
         await RedisCacheService.delPattern('marketplace:produces:*');
         await RedisCacheService.delPattern(`marketplace:vendor:${vendorUserId}:*`);
 
@@ -86,7 +85,6 @@ export class MarketplaceService {
             throw new Error('Vendor profile not found');
         }
 
-        // Check if produce belongs to vendor
         const existing = await prisma.produce.findFirst({
             where: { id: produceId, vendorId: vendor.id }
         });
@@ -115,7 +113,6 @@ export class MarketplaceService {
             }
         });
 
-        // Clear cache
         await Promise.all([
             RedisCacheService.delPattern('marketplace:produces:*'),
             RedisCacheService.delPattern(`marketplace:vendor:${vendorUserId}:*`),
@@ -148,7 +145,6 @@ export class MarketplaceService {
     static async getAllProduce(filters: ProduceFilters = {}): Promise<PaginatedResponse<ProduceResponse>> {
         const cacheKey = `marketplace:produces:${JSON.stringify(filters)}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<PaginatedResponse<ProduceResponse>>(cacheKey);
         if (cached) {
             return cached;
@@ -160,18 +156,13 @@ export class MarketplaceService {
         const sortBy = filters.sortBy || 'createdAt';
         const sortOrder = filters.sortOrder || 'desc';
 
-        // Build where conditions
         const where: any = {
             certificationStatus: 'APPROVED',
             availableQuantity: { gt: 0 }
         };
 
-        if (filters.category) {
-            where.category = filters.category;
-        }
-        if (filters.vendorId) {
-            where.vendorId = filters.vendorId;
-        }
+        if (filters.category) where.category = filters.category;
+        if (filters.vendorId) where.vendorId = filters.vendorId;
         if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
             where.price = {};
             if (filters.minPrice !== undefined) where.price.gte = filters.minPrice;
@@ -184,7 +175,6 @@ export class MarketplaceService {
             ];
         }
 
-        // Execute queries
         const [produces, total] = await Promise.all([
             prisma.produce.findMany({
                 where,
@@ -225,7 +215,6 @@ export class MarketplaceService {
         }));
 
         const totalPages = Math.ceil(total / limit);
-
         const response: PaginatedResponse<ProduceResponse> = {
             data: transformedProduces,
             meta: {
@@ -238,16 +227,13 @@ export class MarketplaceService {
             }
         };
 
-        // Cache for 5 minutes
         await RedisCacheService.setFast(cacheKey, response, 300);
-
         return response;
     }
 
     static async getProduceById(produceId: number): Promise<ProduceResponse> {
         const cacheKey = `marketplace:produce:${produceId}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<ProduceResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -294,9 +280,7 @@ export class MarketplaceService {
             updatedAt: produce.updatedAt,
         };
 
-        // Cache for 10 minutes
         await RedisCacheService.setFast(cacheKey, response, 600);
-
         return response;
     }
 
@@ -308,7 +292,6 @@ export class MarketplaceService {
             return cached;
         }
 
-        // Get vendor
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId: vendorUserId },
             select: { id: true }
@@ -324,12 +307,9 @@ export class MarketplaceService {
         const sortBy = filters.sortBy || 'createdAt';
         const sortOrder = filters.sortOrder || 'desc';
 
-        // Build where conditions
         const where: any = { vendorId: vendor.id };
 
-        if (filters.category) {
-            where.category = filters.category;
-        }
+        if (filters.category) where.category = filters.category;
         if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
             where.price = {};
             if (filters.minPrice !== undefined) where.price.gte = filters.minPrice;
@@ -382,7 +362,6 @@ export class MarketplaceService {
         }));
 
         const totalPages = Math.ceil(total / limit);
-
         const response: PaginatedResponse<ProduceResponse> = {
             data: transformedProduces,
             meta: {
@@ -396,7 +375,6 @@ export class MarketplaceService {
         };
 
         await RedisCacheService.setFast(cacheKey, response, 120);
-
         return response;
     }
 
@@ -410,11 +388,7 @@ export class MarketplaceService {
             throw new Error('Vendor profile not found');
         }
 
-        // Check if produce has orders
-        const orders = await prisma.order.count({
-            where: { produceId }
-        });
-
+        const orders = await prisma.order.count({ where: { produceId } });
         if (orders > 0) {
             throw new Error('Cannot delete produce with existing orders');
         }
@@ -423,7 +397,6 @@ export class MarketplaceService {
             where: { id: produceId, vendorId: vendor.id }
         });
 
-        // Clear cache
         await Promise.all([
             RedisCacheService.delPattern('marketplace:produces:*'),
             RedisCacheService.delPattern(`marketplace:vendor:${vendorUserId}:*`),
@@ -438,7 +411,6 @@ export class MarketplaceService {
     static async getCart(userId: number): Promise<CartResponse> {
         const cacheKey = `marketplace:cart:${userId}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<CartResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -473,21 +445,13 @@ export class MarketplaceService {
         }));
 
         const totalPrice = items.reduce((sum, item) => sum + item.subtotal, 0);
+        const response: CartResponse = { items, totalItems: items.length, totalPrice };
 
-        const response: CartResponse = {
-            items,
-            totalItems: items.length,
-            totalPrice,
-        };
-
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
-
         return response;
     }
 
     static async addToCart(userId: number, data: AddToCartInput): Promise<CartResponse> {
-        // Check produce availability
         const produce = await prisma.produce.findFirst({
             where: {
                 id: data.produceId,
@@ -500,7 +464,6 @@ export class MarketplaceService {
             throw new Error('Produce not available or insufficient quantity');
         }
 
-        // Check if item already in cart
         const existingItem = await prisma.cartItem.findFirst({
             where: { userId, produceId: data.produceId }
         });
@@ -512,17 +475,11 @@ export class MarketplaceService {
             });
         } else {
             await prisma.cartItem.create({
-                data: {
-                    userId,
-                    produceId: data.produceId,
-                    quantity: data.quantity
-                }
+                data: { userId, produceId: data.produceId, quantity: data.quantity }
             });
         }
 
-        // Clear cart cache
         await RedisCacheService.del(`marketplace:cart:${userId}`);
-
         return this.getCart(userId);
     }
 
@@ -542,44 +499,28 @@ export class MarketplaceService {
             if (cartItem.produce.availableQuantity < quantity) {
                 throw new Error('Insufficient quantity available');
             }
-            await prisma.cartItem.update({
-                where: { id: itemId },
-                data: { quantity }
-            });
+            await prisma.cartItem.update({ where: { id: itemId }, data: { quantity } });
         }
 
-        // Clear cart cache
         await RedisCacheService.del(`marketplace:cart:${userId}`);
-
         return this.getCart(userId);
     }
 
     static async removeFromCart(userId: number, itemId: number): Promise<CartResponse> {
-        await prisma.cartItem.deleteMany({
-            where: { id: itemId, userId }
-        });
-
-        // Clear cart cache
+        await prisma.cartItem.deleteMany({ where: { id: itemId, userId } });
         await RedisCacheService.del(`marketplace:cart:${userId}`);
-
         return this.getCart(userId);
     }
 
     static async clearCart(userId: number): Promise<CartResponse> {
-        await prisma.cartItem.deleteMany({
-            where: { userId }
-        });
-
-        // Clear cart cache
+        await prisma.cartItem.deleteMany({ where: { userId } });
         await RedisCacheService.del(`marketplace:cart:${userId}`);
-
         return { items: [], totalItems: 0, totalPrice: 0 };
     }
 
-    // ============ ORDER MANAGEMENT ============
+    // ============ ORDER MANAGEMENT WITH SOCKET ============
 
     static async createOrder(userId: number, data: CreateOrderInput): Promise<OrderResponse> {
-        // Check produce availability
         const produce = await prisma.produce.findFirst({
             where: {
                 id: data.produceId,
@@ -594,7 +535,6 @@ export class MarketplaceService {
 
         const totalPrice = produce.price * data.quantity;
 
-        // Create order
         const order = await prisma.order.create({
             data: {
                 userId,
@@ -609,9 +549,7 @@ export class MarketplaceService {
                     include: {
                         vendor: {
                             include: {
-                                user: {
-                                    select: { name: true }
-                                }
+                                user: { select: { name: true } }
                             }
                         }
                     }
@@ -619,18 +557,32 @@ export class MarketplaceService {
             }
         });
 
-        // Update produce quantity
         await prisma.produce.update({
             where: { id: data.produceId },
             data: { availableQuantity: { decrement: data.quantity } }
         });
 
-        // Remove from cart
         await prisma.cartItem.deleteMany({
             where: { userId, produceId: data.produceId }
         });
 
-        // Create notification for vendor
+        // Get customer info for notification
+        const customer = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true }
+        });
+
+        // Send real-time notification to vendor via Socket.IO
+        await socketService.sendOrderNotification(produce.vendorId, {
+            orderId: order.id,
+            customerName: customer?.name || 'Customer',
+            productName: produce.name,
+            quantity: data.quantity,
+            totalPrice: totalPrice,
+            timestamp: new Date()
+        });
+
+        // Create database notification
         await prisma.notification.create({
             data: {
                 userId: produce.vendorId,
@@ -640,7 +592,6 @@ export class MarketplaceService {
             },
         });
 
-        // Clear caches
         await Promise.all([
             RedisCacheService.del(`marketplace:cart:${userId}`),
             RedisCacheService.delPattern(`marketplace:orders:${userId}:*`),
@@ -656,9 +607,7 @@ export class MarketplaceService {
             produce: {
                 id: order.produce.id,
                 name: order.produce.name,
-                vendor: {
-                    farmName: order.produce.vendor.farmName,
-                },
+                vendor: { farmName: order.produce.vendor.farmName },
             },
         };
     }
@@ -678,9 +627,7 @@ export class MarketplaceService {
         const sortOrder = filters.sortOrder || 'desc';
 
         const where: any = { userId };
-        if (filters.status) {
-            where.status = filters.status;
-        }
+        if (filters.status) where.status = filters.status;
 
         const [orders, total] = await Promise.all([
             prisma.order.findMany({
@@ -691,9 +638,7 @@ export class MarketplaceService {
                 include: {
                     produce: {
                         include: {
-                            vendor: {
-                                select: { farmName: true }
-                            }
+                            vendor: { select: { farmName: true } }
                         }
                     }
                 }
@@ -710,14 +655,11 @@ export class MarketplaceService {
             produce: {
                 id: order.produce.id,
                 name: order.produce.name,
-                vendor: {
-                    farmName: order.produce.vendor.farmName,
-                },
+                vendor: { farmName: order.produce.vendor.farmName },
             },
         }));
 
         const totalPages = Math.ceil(total / limit);
-
         const response: PaginatedResponse<OrderResponse> = {
             data: transformedOrders,
             meta: {
@@ -731,7 +673,6 @@ export class MarketplaceService {
         };
 
         await RedisCacheService.setFast(cacheKey, response, 120);
-
         return response;
     }
 
@@ -748,9 +689,7 @@ export class MarketplaceService {
             include: {
                 produce: {
                     include: {
-                        vendor: {
-                            select: { farmName: true }
-                        }
+                        vendor: { select: { farmName: true } }
                     }
                 }
             }
@@ -769,17 +708,15 @@ export class MarketplaceService {
             produce: {
                 id: order.produce.id,
                 name: order.produce.name,
-                vendor: {
-                    farmName: order.produce.vendor.farmName,
-                },
+                vendor: { farmName: order.produce.vendor.farmName },
             },
         };
 
         await RedisCacheService.setFast(cacheKey, response, 300);
-
         return response;
     }
 
+    // ============ UPDATE ORDER STATUS (WITH SOCKET) ============
     static async updateOrderStatus(vendorUserId: number, orderId: number, data: UpdateOrderStatusInput): Promise<OrderResponse> {
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId: vendorUserId },
@@ -790,13 +727,9 @@ export class MarketplaceService {
             throw new Error('Vendor profile not found');
         }
 
-        // Get order details
         const order = await prisma.order.findFirst({
             where: { id: orderId, vendorId: vendor.id },
-            include: {
-                produce: true,
-                user: true
-            }
+            include: { produce: true, user: true }
         });
 
         if (!order) {
@@ -809,15 +742,16 @@ export class MarketplaceService {
             include: {
                 produce: {
                     include: {
-                        vendor: {
-                            select: { farmName: true }
-                        }
+                        vendor: { select: { farmName: true } }
                     }
                 }
             }
         });
 
-        // Create notification for customer
+        // Send real-time notification to customer via Socket.IO
+        await socketService.sendOrderStatusUpdate(order.userId, orderId, data.status);
+
+        // Create database notification
         await prisma.notification.create({
             data: {
                 userId: order.userId,
@@ -827,7 +761,6 @@ export class MarketplaceService {
             },
         });
 
-        // Clear caches
         await Promise.all([
             RedisCacheService.delPattern(`marketplace:orders:${order.userId}:*`),
             RedisCacheService.del(`marketplace:order:${orderId}:user:${order.userId}`),
@@ -843,9 +776,7 @@ export class MarketplaceService {
             produce: {
                 id: updatedOrder.produce.id,
                 name: updatedOrder.produce.name,
-                vendor: {
-                    farmName: updatedOrder.produce.vendor.farmName,
-                },
+                vendor: { farmName: updatedOrder.produce.vendor.farmName },
             },
         };
     }

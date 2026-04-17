@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
+import socketService from '../../services/socket.service';
 import { PrismaQueryBuilder } from '../../shared/utils/prisma-query-builder';
 import {
     CreateRentalBookingInput,
@@ -15,76 +16,48 @@ import {
 
 export class RentalService {
 
-    // ============ SEARCH RENTAL SPACES WITH QUERY BUILDER ============
+    // ============ SEARCH RENTAL SPACES ============
     static async searchRentalSpaces(filters: SearchRentalSpaceInput): Promise<PaginatedRentalSpacesResponse> {
-        // Create cache key
         const cacheKey = `rental:spaces:${JSON.stringify(filters)}`;
 
-        // Try cache first
         const cached = await RedisCacheService.getFast<PaginatedRentalSpacesResponse>(cacheKey);
         if (cached) {
             return cached;
         }
 
-        // Build query using the reusable query builder
         const queryBuilder = new PrismaQueryBuilder('RentalSpace', filters as any);
-
-        // Set searchable fields
         queryBuilder.setSearchFields(['location']);
 
-        // Build where conditions for range filters
         const conditions: Prisma.Sql[] = [];
 
-        if (filters.minSize !== undefined) {
-            conditions.push(Prisma.sql`size >= ${filters.minSize}`);
-        }
-        if (filters.maxSize !== undefined) {
-            conditions.push(Prisma.sql`size <= ${filters.maxSize}`);
-        }
-        if (filters.minPrice !== undefined) {
-            conditions.push(Prisma.sql`price >= ${filters.minPrice}`);
-        }
-        if (filters.maxPrice !== undefined) {
-            conditions.push(Prisma.sql`price <= ${filters.maxPrice}`);
-        }
+        if (filters.minSize !== undefined) conditions.push(Prisma.sql`size >= ${filters.minSize}`);
+        if (filters.maxSize !== undefined) conditions.push(Prisma.sql`size <= ${filters.maxSize}`);
+        if (filters.minPrice !== undefined) conditions.push(Prisma.sql`price >= ${filters.minPrice}`);
+        if (filters.maxPrice !== undefined) conditions.push(Prisma.sql`price <= ${filters.maxPrice}`);
         if (filters.availability !== undefined) {
             conditions.push(Prisma.sql`availability = ${filters.availability}`);
         } else {
             conditions.push(Prisma.sql`availability = true`);
         }
 
-        // Combine all conditions
         if (conditions.length > 0) {
             const combinedCondition = Prisma.sql`${Prisma.join(conditions, ' AND ')}`;
             queryBuilder.addCustomCondition(combinedCondition);
         }
 
-        // Custom query with vendor and user info
         const customQuery = Prisma.sql`
             SELECT 
-                rs.id,
-                rs."vendorId",
-                rs.location,
-                rs.size,
-                rs.price,
-                rs.availability,
-                rs."createdAt",
-                rs."updatedAt",
-                vp.id as vendor_id,
-                vp."farmName",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."phoneNumber" as user_phone
+                rs.id, rs."vendorId", rs.location, rs.size, rs.price, rs.availability,
+                rs."createdAt", rs."updatedAt",
+                vp.id as vendor_id, vp."farmName",
+                u.id as user_id, u.name as user_name, u.email as user_email, u."phoneNumber" as user_phone
             FROM "RentalSpace" rs
             LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
             LEFT JOIN "User" u ON vp."userId" = u.id
         `;
 
-        // Execute query with pagination
         const result = await queryBuilder.execute<any>(customQuery);
 
-        // Transform to expected response format
         const transformedSpaces: RentalSpaceResponse[] = result.data.map((space: any) => ({
             id: space.id,
             vendorId: space.vendorId,
@@ -110,17 +83,13 @@ export class RentalService {
             meta: result.meta
         };
 
-        // Cache for 5 minutes
         await RedisCacheService.setFast(cacheKey, response, 300);
-
         return response;
     }
 
-    // ============ GET RENTAL SPACE BY ID ============
     static async getRentalSpaceById(spaceId: number): Promise<RentalSpaceResponse> {
         const cacheKey = `rental:space:${spaceId}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<RentalSpaceResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -128,20 +97,10 @@ export class RentalService {
 
         const space = await prisma.$queryRaw<any[]>`
             SELECT 
-                rs.id,
-                rs."vendorId",
-                rs.location,
-                rs.size,
-                rs.price,
-                rs.availability,
-                rs."createdAt",
-                rs."updatedAt",
-                vp.id as vendor_id,
-                vp."farmName",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."phoneNumber" as user_phone
+                rs.id, rs."vendorId", rs.location, rs.size, rs.price, rs.availability,
+                rs."createdAt", rs."updatedAt",
+                vp.id as vendor_id, vp."farmName",
+                u.id as user_id, u.name as user_name, u.email as user_email, u."phoneNumber" as user_phone
             FROM "RentalSpace" rs
             LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
             LEFT JOIN "User" u ON vp."userId" = u.id
@@ -174,27 +133,17 @@ export class RentalService {
             },
         };
 
-        // Cache for 5 minutes
         await RedisCacheService.setFast(cacheKey, response, 300);
-
         return response;
     }
 
-    // ============ CREATE RENTAL BOOKING ============
+    // ============ CREATE RENTAL BOOKING (WITH SOCKET) ============
     static async createBooking(userId: number, data: CreateRentalBookingInput): Promise<RentalBookingResponse> {
-        // Check if space exists and is available
         const space = await prisma.$queryRaw<any[]>`
             SELECT 
-                rs.id,
-                rs.location,
-                rs.size,
-                rs.price,
-                vp.id as vendor_id,
-                vp."farmName",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."phoneNumber" as user_phone
+                rs.id, rs.location, rs.size, rs.price,
+                vp.id as vendor_id, vp."farmName",
+                u.id as user_id, u.name as user_name, u.email as user_email, u."phoneNumber" as user_phone
             FROM "RentalSpace" rs
             LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
             LEFT JOIN "User" u ON vp."userId" = u.id
@@ -208,7 +157,6 @@ export class RentalService {
 
         const spaceData = space[0];
 
-        // Check for overlapping bookings
         const existingBooking = await prisma.$queryRaw<any[]>`
             SELECT id FROM "RentalBooking"
             WHERE "spaceId" = ${data.spaceId}
@@ -224,7 +172,6 @@ export class RentalService {
             throw new Error('Space already booked for selected dates');
         }
 
-        // Create booking
         const booking = await prisma.$queryRaw<any[]>`
             INSERT INTO "RentalBooking" ("spaceId", "userId", "startDate", "endDate", status, "orderDate")
             VALUES (${data.spaceId}, ${userId}, ${data.startDate}, ${data.endDate}, 'PENDING', NOW())
@@ -233,7 +180,23 @@ export class RentalService {
 
         const bookingData = booking[0];
 
-        // Create notification for vendor
+        // Get customer info for notification
+        const customer = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true }
+        });
+
+        // Send real-time notification to vendor via Socket.IO
+        await socketService.sendBookingNotification(spaceData.user_id, {
+            bookingId: bookingData.id,
+            spaceId: data.spaceId,
+            customerName: customer?.name || 'Customer',
+            startDate: data.startDate,
+            endDate: data.endDate,
+            timestamp: new Date()
+        });
+
+        // Create database notification
         await prisma.notification.create({
             data: {
                 userId: spaceData.user_id,
@@ -243,7 +206,6 @@ export class RentalService {
             },
         });
 
-        // Clear relevant caches
         await RedisCacheService.delPattern('rental:spaces:*');
         await RedisCacheService.delPattern(`rental:bookings:user:${userId}:*`);
 
@@ -273,11 +235,10 @@ export class RentalService {
         return response;
     }
 
-    // ============ GET USER BOOKINGS WITH PAGINATION ============
+    // ============ GET USER BOOKINGS ============
     static async getUserBookings(userId: number, filters: GetUserBookingsInput = {}): Promise<PaginatedBookingsResponse> {
         const cacheKey = `rental:bookings:user:${userId}:${JSON.stringify(filters)}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<PaginatedBookingsResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -289,37 +250,22 @@ export class RentalService {
         const sortBy = filters.sortBy || 'orderDate';
         const sortOrder = filters.sortOrder || 'desc';
 
-        // Build where clause
         let whereClause = `"userId" = ${userId}`;
         if (filters.status) {
             whereClause += ` AND status = '${filters.status}'`;
         }
 
-        // Get total count
         const countResult = await prisma.$queryRaw<{ total: number }[]>`
-            SELECT COUNT(*) as total
-            FROM "RentalBooking"
-            WHERE ${Prisma.raw(whereClause)}
+            SELECT COUNT(*) as total FROM "RentalBooking" WHERE ${Prisma.raw(whereClause)}
         `;
         const total = Number(countResult[0]?.total) || 0;
 
-        // Get paginated bookings
         const bookings = await prisma.$queryRaw<any[]>`
             SELECT 
-                rb.id,
-                rb."spaceId",
-                rb."userId",
-                rb."startDate",
-                rb."endDate",
-                rb.status,
-                rb."orderDate",
-                rs.location as space_location,
-                rs.size as space_size,
-                rs.price as space_price,
+                rb.id, rb."spaceId", rb."userId", rb."startDate", rb."endDate", rb.status, rb."orderDate",
+                rs.location as space_location, rs.size as space_size, rs.price as space_price,
                 vp."farmName" as vendor_farmName,
-                u.name as vendor_name,
-                u.email as vendor_email,
-                u."phoneNumber" as vendor_phone
+                u.name as vendor_name, u.email as vendor_email, u."phoneNumber" as vendor_phone
             FROM "RentalBooking" rb
             LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
             LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
@@ -353,7 +299,6 @@ export class RentalService {
         }));
 
         const totalPages = Math.ceil(total / limit);
-
         const response: PaginatedBookingsResponse = {
             bookings: transformedBookings,
             meta: {
@@ -366,17 +311,13 @@ export class RentalService {
             }
         };
 
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
-
         return response;
     }
 
-    // ============ GET BOOKING BY ID ============
     static async getBookingById(userId: number, bookingId: number): Promise<RentalBookingResponse> {
         const cacheKey = `rental:booking:${bookingId}:user:${userId}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<RentalBookingResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -384,20 +325,10 @@ export class RentalService {
 
         const booking = await prisma.$queryRaw<any[]>`
             SELECT 
-                rb.id,
-                rb."spaceId",
-                rb."userId",
-                rb."startDate",
-                rb."endDate",
-                rb.status,
-                rb."orderDate",
-                rs.location as space_location,
-                rs.size as space_size,
-                rs.price as space_price,
+                rb.id, rb."spaceId", rb."userId", rb."startDate", rb."endDate", rb.status, rb."orderDate",
+                rs.location as space_location, rs.size as space_size, rs.price as space_price,
                 vp."farmName" as vendor_farmName,
-                u.name as vendor_name,
-                u.email as vendor_email,
-                u."phoneNumber" as vendor_phone
+                u.name as vendor_name, u.email as vendor_email, u."phoneNumber" as vendor_phone
             FROM "RentalBooking" rb
             LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
             LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
@@ -434,22 +365,15 @@ export class RentalService {
             },
         };
 
-        // Cache for 5 minutes
         await RedisCacheService.setFast(cacheKey, response, 300);
-
         return response;
     }
 
-    // ============ CANCEL BOOKING ============
+    // ============ CANCEL BOOKING (WITH SOCKET) ============
     static async cancelBooking(userId: number, bookingId: number, reason?: string): Promise<{ message: string }> {
-        // Check if booking exists and belongs to user
         const booking = await prisma.$queryRaw<any[]>`
             SELECT 
-                rb.id,
-                rb.status,
-                rb."spaceId",
-                rs.location,
-                vp."userId" as vendorUserId
+                rb.id, rb.status, rb."spaceId", rs.location, vp."userId" as vendorUserId
             FROM "RentalBooking" rb
             LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
             LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
@@ -467,14 +391,14 @@ export class RentalService {
             throw new Error('Cannot cancel completed booking');
         }
 
-        // Update booking status
         await prisma.$executeRaw`
-            UPDATE "RentalBooking"
-            SET status = 'CANCELLED'
-            WHERE id = ${bookingId}
+            UPDATE "RentalBooking" SET status = 'CANCELLED' WHERE id = ${bookingId}
         `;
 
-        // Create notification for vendor
+        // Send real-time notification to vendor via Socket.IO
+        await socketService.sendBookingStatusUpdate(bookingData.vendoruserid, bookingId, 'CANCELLED');
+
+        // Create database notification
         await prisma.notification.create({
             data: {
                 userId: bookingData.vendoruserid,
@@ -484,7 +408,6 @@ export class RentalService {
             },
         });
 
-        // Clear caches
         await Promise.all([
             RedisCacheService.delPattern('rental:spaces:*'),
             RedisCacheService.delPattern(`rental:bookings:user:${userId}:*`),
@@ -494,11 +417,9 @@ export class RentalService {
         return { message: 'Booking cancelled successfully' };
     }
 
-    // ============ GET VENDOR BOOKINGS (For Vendor Module) ============
     static async getVendorBookings(vendorUserId: number, filters: GetUserBookingsInput = {}): Promise<PaginatedBookingsResponse> {
         const cacheKey = `rental:vendor:bookings:${vendorUserId}:${JSON.stringify(filters)}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<PaginatedBookingsResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -510,7 +431,6 @@ export class RentalService {
         const sortBy = filters.sortBy || 'orderDate';
         const sortOrder = filters.sortOrder || 'desc';
 
-        // Get vendor profile
         const vendor = await prisma.$queryRaw<any[]>`
             SELECT id FROM "VendorProfile" WHERE "userId" = ${vendorUserId} LIMIT 1
         `;
@@ -521,13 +441,11 @@ export class RentalService {
 
         const vendorId = vendor[0].id;
 
-        // Build where clause
         let whereClause = `rs."vendorId" = ${vendorId}`;
         if (filters.status) {
             whereClause += ` AND rb.status = '${filters.status}'`;
         }
 
-        // Get total count
         const countResult = await prisma.$queryRaw<{ total: number }[]>`
             SELECT COUNT(*) as total
             FROM "RentalBooking" rb
@@ -536,22 +454,11 @@ export class RentalService {
         `;
         const total = Number(countResult[0]?.total) || 0;
 
-        // Get paginated bookings
         const bookings = await prisma.$queryRaw<any[]>`
             SELECT 
-                rb.id,
-                rb."spaceId",
-                rb."userId",
-                rb."startDate",
-                rb."endDate",
-                rb.status,
-                rb."orderDate",
-                rs.location as space_location,
-                rs.size as space_size,
-                rs.price as space_price,
-                u.name as customer_name,
-                u.email as customer_email,
-                u."phoneNumber" as customer_phone
+                rb.id, rb."spaceId", rb."userId", rb."startDate", rb."endDate", rb.status, rb."orderDate",
+                rs.location as space_location, rs.size as space_size, rs.price as space_price,
+                u.name as customer_name, u.email as customer_email, u."phoneNumber" as customer_phone
             FROM "RentalBooking" rb
             LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
             LEFT JOIN "User" u ON rb."userId" = u.id
@@ -573,7 +480,7 @@ export class RentalService {
                 size: Number(booking.space_size),
                 price: Number(booking.space_price),
                 vendor: {
-                    farmName: '', // Not needed for vendor view
+                    farmName: '',
                     user: {
                         name: booking.customer_name,
                         email: booking.customer_email,
@@ -584,7 +491,6 @@ export class RentalService {
         }));
 
         const totalPages = Math.ceil(total / limit);
-
         const response: PaginatedBookingsResponse = {
             bookings: transformedBookings,
             meta: {
@@ -597,9 +503,7 @@ export class RentalService {
             }
         };
 
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
-
         return response;
     }
 }

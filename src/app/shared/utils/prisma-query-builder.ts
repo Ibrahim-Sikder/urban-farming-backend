@@ -36,6 +36,33 @@ export class PrismaQueryBuilder<T = any> {
     private sortOrderValue: 'asc' | 'desc' = 'desc';
     private customConditions: Prisma.Sql[] = [];
 
+    // Define valid columns for each model
+    private static readonly VALID_COLUMNS: Record<string, string[]> = {
+        'User': ['role', 'status', 'email', 'name', 'id', 'phoneNumber'],
+        'VendorProfile': ['certificationStatus', 'farmName', 'farmLocation', 'userId', 'id'],
+        'SustainabilityCert': ['verificationStatus', 'vendorId', 'certifyingAgency', 'id'],
+        'Order': ['status', 'userId', 'vendorId', 'produceId', 'id'],
+        'RentalSpace': ['availability', 'vendorId', 'location', 'id'],
+        'Produce': ['category', 'vendorId', 'name', 'price', 'id']
+    };
+
+    // Define enum types for casting
+    private static readonly ENUM_FIELDS: Record<string, Record<string, string>> = {
+        'User': {
+            'role': 'Role',
+            'status': 'UserStatus'
+        },
+        'VendorProfile': {
+            'certificationStatus': 'CertificationStatus'
+        },
+        'SustainabilityCert': {
+            'verificationStatus': 'CertificationStatus'
+        },
+        'Order': {
+            'status': 'OrderStatus'
+        }
+    };
+
     constructor(modelName: string, query: Record<string, any>) {
         this.modelName = modelName;
         this.query = query;
@@ -55,8 +82,26 @@ export class PrismaQueryBuilder<T = any> {
         Object.keys(this.query).forEach(key => {
             if (!excludeKeys.includes(key) && this.query[key] !== undefined && this.query[key] !== '') {
                 this.filters[key] = this.query[key];
+                console.log(`Filter added: ${key} = ${this.query[key]}`); // Debug log
             }
         });
+    }
+
+    // Get valid columns for current model
+    private getValidColumns(): string[] {
+        return PrismaQueryBuilder.VALID_COLUMNS[this.modelName] || [];
+    }
+
+    // Check if field needs enum casting
+    private needsEnumCasting(field: string): boolean {
+        const enumFields = PrismaQueryBuilder.ENUM_FIELDS[this.modelName];
+        return enumFields ? field in enumFields : false;
+    }
+
+    // Get enum type for field
+    private getEnumType(field: string): string | null {
+        const enumFields = PrismaQueryBuilder.ENUM_FIELDS[this.modelName];
+        return enumFields ? enumFields[field] : null;
     }
 
     // Build WHERE clause with search and filters
@@ -76,25 +121,50 @@ export class PrismaQueryBuilder<T = any> {
             conditions.push(Prisma.sql`(${Prisma.join(searchConditions, ' OR ')})`);
         }
 
-        // Add filter conditions - skip invalid column names
-        const validColumns = ['category', 'vendorId', 'certificationStatus', 'status', 'userId', 'role'];
+        // Add filter conditions with proper casting
+        const validColumns = this.getValidColumns();
+
         Object.entries(this.filters).forEach(([key, value]) => {
+            console.log(`Processing filter: ${key} = ${value}, validColumns: ${validColumns.includes(key)}`); // Debug log
+
             // Only add filter if column exists in database
             if (validColumns.includes(key) && value !== undefined && value !== null && value !== '') {
+                // Handle array of values (comma-separated)
                 if (typeof value === 'string' && value.includes(',')) {
-                    const values = value.split(',').map((v: string) => `'${v.trim()}'`).join(',');
+                    const values = value.split(',').map((v: string) => {
+                        const trimmed = v.trim();
+                        if (this.needsEnumCasting(key)) {
+                            const enumType = this.getEnumType(key);
+                            return `${trimmed}::"${enumType}"`;
+                        }
+                        return `'${trimmed}'`;
+                    }).join(', ');
+
                     conditions.push(Prisma.sql`${Prisma.raw(key)} IN (${Prisma.raw(values)})`);
                 } else {
-                    conditions.push(Prisma.sql`${Prisma.raw(key)} = ${value}`);
+                    // Handle single value with proper casting
+                    if (this.needsEnumCasting(key)) {
+                        const enumType = this.getEnumType(key);
+                        console.log(`Adding enum condition: ${key} = ${value}::"${enumType}"`); // Debug log
+                        conditions.push(Prisma.sql`${Prisma.raw(key)} = ${value}::"${Prisma.raw(enumType!)}"`);
+                    } else {
+                        console.log(`Adding normal condition: ${key} = ${value}`); // Debug log
+                        conditions.push(Prisma.sql`${Prisma.raw(key)} = ${value}`);
+                    }
                 }
+            } else if (!validColumns.includes(key)) {
+                console.warn(`Column ${key} not found in valid columns for model ${this.modelName}`);
             }
         });
 
         if (conditions.length === 0) {
+            console.log('No conditions, using 1=1');
             return Prisma.sql`1=1`;
         }
 
-        return Prisma.sql`${Prisma.join(conditions, ' AND ')}`;
+        const finalWhere = Prisma.sql`${Prisma.join(conditions, ' AND ')}`;
+        console.log(`Final WHERE clause: ${finalWhere.sql}`); // Debug log
+        return finalWhere;
     }
 
     // Build ORDER BY clause
@@ -105,14 +175,17 @@ export class PrismaQueryBuilder<T = any> {
             'createdAt': 'createdAt',
             'updatedAt': 'updatedAt',
             'name': 'name',
+            'email': 'email',
             'price': 'price',
             'status': 'status',
-            'plantName': 'plantName',
-            'plantType': 'plantType',
-            'healthStatus': 'healthStatus',
-            'growthStage': 'growthStage',
+            'role': 'role',
+            'farmName': 'farmName',
+            'farmLocation': 'farmLocation',
             'orderDate': 'orderDate',
             'totalPrice': 'totalPrice',
+            'certificationStatus': 'certificationStatus',
+            'verificationStatus': 'verificationStatus',
+            'id': 'id'
         };
 
         const field = sortFieldMap[this.sortByField] || 'createdAt';
@@ -154,9 +227,12 @@ export class PrismaQueryBuilder<T = any> {
 
         if (customQuery) {
             // For custom query, we need to ensure WHERE clause is applied
-            // Check if custom query already has WHERE clause
             const queryStr = customQuery.sql;
-            if (queryStr.includes('WHERE') && whereClause.sql !== '1=1') {
+
+            // Check if custom query already has WHERE clause
+            const hasWhere = queryStr.toUpperCase().includes('WHERE');
+
+            if (hasWhere && whereClause.sql !== '1=1') {
                 // Custom query has its own WHERE, append our conditions
                 dataQuery = Prisma.sql`
                     ${customQuery}
@@ -193,6 +269,9 @@ export class PrismaQueryBuilder<T = any> {
                 OFFSET ${this.offset}
             `;
         }
+
+        console.log(`Data Query SQL: ${dataQuery.sql}`); // Debug log
+        console.log(`Count Query SQL: ${countQuery.sql}`); // Debug log
 
         // Execute both queries
         const [countResult, data] = await Promise.all([

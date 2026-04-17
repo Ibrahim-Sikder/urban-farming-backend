@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
+import socketService from '../../services/socket.service';
 import { PrismaQueryBuilder, PaginatedResult } from '../../shared/utils/prisma-query-builder';
 import {
     CreatePlantInput,
@@ -27,127 +28,89 @@ export class PlantService {
             },
         });
 
-        // Clear cache in background
-        setImmediate(() => {
-            RedisCacheService.clearUserPlantsCache(userId).catch(console.error);
-        });
+        // Clear all plant-related caches for this user
+        await RedisCacheService.clearUserPaginatedCache('plants', userId);
+        await RedisCacheService.delete('plants:stats', userId);
 
         return plant as PlantResponse;
     }
 
-    // ============ GET USER PLANTS WITH PAGINATION, FILTER, SEARCH, SORT ============
+    // ============ GET USER PLANTS WITH PAGINATION ============
     static async getUserPlants(
         userId: number,
         queryParams: PlantQueryParams
     ): Promise<PaginatedResult<PlantResponse>> {
-        // Create unique cache key based on query params
-        const cacheKey = `plants:${userId}:${JSON.stringify(queryParams)}`;
-
-        // Try cache first
-        const cached = await RedisCacheService.getFast<PaginatedResult<PlantResponse>>(cacheKey);
+        const cached = await RedisCacheService.getPaginated<PaginatedResult<PlantResponse>>(
+            'plants',
+            userId,
+            queryParams as any
+        );
         if (cached) {
             return cached;
         }
 
-        // Build query using the reusable query builder
         const queryBuilder = new PrismaQueryBuilder('PlantTracking', queryParams as any);
-
-        // Set searchable fields
         queryBuilder.setSearchFields(['plantName', 'plantType', 'notes']);
 
-        // Add user filter using the correct method
         const userCondition = Prisma.sql`"userId" = ${userId}`;
         queryBuilder.addCustomCondition(userCondition);
 
-        // Custom query with specific fields selection (without WHERE clause since builder adds it)
         const customQuery = Prisma.sql`
             SELECT 
-                id,
-                "plantName",
-                "plantType",
-                "plantedDate",
-                "expectedHarvestDate",
-                "actualHarvestDate",
-                "healthStatus",
-                "growthStage",
-                notes,
-                "lastUpdated",
-                "createdAt"
+                id, "plantName", "plantType", "plantedDate",
+                "expectedHarvestDate", "actualHarvestDate", "healthStatus",
+                "growthStage", notes, "lastUpdated", "createdAt"
             FROM "PlantTracking"
         `;
 
-        // Execute query with pagination
         const result = await queryBuilder.execute<PlantResponse>(customQuery);
-
-        // Cache for 2 minutes
-        await RedisCacheService.setFast(cacheKey, result, 120);
+        await RedisCacheService.setPaginated('plants', userId, queryParams as any, result, 120);
 
         return result;
     }
 
-    // ============ GET ALL PLANTS (ADMIN) WITH ADVANCED FILTERS ============
+    // ============ GET ALL PLANTS (ADMIN) ============
     static async getAllPlants(queryParams: PlantQueryParams): Promise<PaginatedResult<PlantResponse>> {
-        const cacheKey = `plants:all:${JSON.stringify(queryParams)}`;
-
-        const cached = await RedisCacheService.getFast<PaginatedResult<PlantResponse>>(cacheKey);
+        const cached = await RedisCacheService.getPaginated<PaginatedResult<PlantResponse>>(
+            'plants:all',
+            null,
+            queryParams as any
+        );
         if (cached) {
             return cached;
         }
 
         const queryBuilder = new PrismaQueryBuilder('PlantTracking', queryParams as any);
-
-        // Set searchable fields
         queryBuilder.setSearchFields(['plantName', 'plantType', 'notes']);
 
-        // Custom query with user info for admin
         const customQuery = Prisma.sql`
             SELECT 
-                p.id,
-                p."plantName",
-                p."plantType",
-                p."plantedDate",
-                p."expectedHarvestDate",
-                p."actualHarvestDate",
-                p."healthStatus",
-                p."growthStage",
-                p.notes,
-                p."lastUpdated",
-                p."createdAt",
-                u.name as "userName",
-                u.email as "userEmail"
+                p.id, p."plantName", p."plantType", p."plantedDate",
+                p."expectedHarvestDate", p."actualHarvestDate", p."healthStatus",
+                p."growthStage", p.notes, p."lastUpdated", p."createdAt",
+                u.name as "userName", u.email as "userEmail"
             FROM "PlantTracking" p
             LEFT JOIN "User" u ON p."userId" = u.id
         `;
 
         const result = await queryBuilder.execute<PlantResponse>(customQuery);
-
-        await RedisCacheService.setFast(cacheKey, result, 120);
+        await RedisCacheService.setPaginated('plants:all', null, queryParams as any, result, 120);
 
         return result;
     }
 
     // ============ GET PLANT BY ID ============
     static async getPlantById(userId: number, plantId: number): Promise<PlantResponse> {
-        // Check cache
-        const cached = await RedisCacheService.getCachedSinglePlant(userId, plantId);
+        const cached = await RedisCacheService.get<PlantResponse>('plant', `${userId}:${plantId}`);
         if (cached) {
             return cached;
         }
 
-        // Direct query
         const plant = await prisma.$queryRaw<PlantResponse[]>`
             SELECT 
-                id,
-                "plantName",
-                "plantType",
-                "plantedDate",
-                "expectedHarvestDate",
-                "actualHarvestDate",
-                "healthStatus",
-                "growthStage",
-                notes,
-                "lastUpdated",
-                "createdAt"
+                id, "plantName", "plantType", "plantedDate",
+                "expectedHarvestDate", "actualHarvestDate", "healthStatus",
+                "growthStage", notes, "lastUpdated", "createdAt"
             FROM "PlantTracking"
             WHERE id = ${plantId} AND "userId" = ${userId}
             LIMIT 1
@@ -157,21 +120,17 @@ export class PlantService {
             throw new Error('Plant not found');
         }
 
-        // Cache
-        await RedisCacheService.cacheSinglePlant(userId, plantId, plant[0]);
-
+        await RedisCacheService.set('plant', `${userId}:${plantId}`, plant[0], 300);
         return plant[0];
     }
 
     // ============ UPDATE PLANT ============
     static async updatePlant(userId: number, plantId: number, data: UpdatePlantInput): Promise<PlantResponse> {
-        // First verify plant exists
         const existing = await this.getPlantById(userId, plantId);
         if (!existing) {
             throw new Error('Plant not found');
         }
 
-        // Build update data
         const updateData: any = {};
         if (data.plantName !== undefined) updateData.plantName = data.plantName;
         if (data.plantType !== undefined) updateData.plantType = data.plantType;
@@ -185,18 +144,27 @@ export class PlantService {
             data: updateData,
         });
 
-        // Clear all related caches with pattern
+        // Clear all related caches
         await Promise.all([
-            RedisCacheService.delPattern(`plants:${userId}:*`),
-            RedisCacheService.clearSinglePlantCache(userId, plantId),
-            RedisCacheService.del(`plants:stats:${userId}`),
+            RedisCacheService.clearUserPaginatedCache('plants', userId),
+            RedisCacheService.delete('plant', `${userId}:${plantId}`),
+            RedisCacheService.delete('plants:stats', userId),
         ]);
 
         return updated as PlantResponse;
     }
 
-    // ============ UPDATE HEALTH STATUS ============
+    // ============ UPDATE HEALTH STATUS (WITH SOCKET) ============
     static async updateHealthStatus(userId: number, plantId: number, data: UpdateHealthStatusInput): Promise<PlantResponse> {
+        const plant = await prisma.plantTracking.findFirst({
+            where: { id: plantId, userId },
+            select: { plantName: true, healthStatus: true, growthStage: true }
+        });
+
+        if (!plant) {
+            throw new Error('Plant not found');
+        }
+
         const updated = await prisma.plantTracking.update({
             where: { id: plantId },
             data: {
@@ -206,11 +174,26 @@ export class PlantService {
             },
         });
 
+        // Send real-time plant update via Socket.IO
+        await socketService.sendPlantUpdate(userId, {
+            plantId,
+            plantName: plant.plantName,
+            status: data.healthStatus,
+            healthStatus: data.healthStatus,
+            growthStage: data.growthStage,
+            timestamp: new Date()
+        });
+
+        // Send harvest ready notification
+        if (data.healthStatus === 'HARVEST_READY') {
+            await socketService.sendPlantReadyForHarvest(userId, plantId, plant.plantName);
+        }
+
         // Clear caches
         await Promise.all([
-            RedisCacheService.delPattern(`plants:${userId}:*`),
-            RedisCacheService.clearSinglePlantCache(userId, plantId),
-            RedisCacheService.del(`plants:stats:${userId}`),
+            RedisCacheService.clearUserPaginatedCache('plants', userId),
+            RedisCacheService.delete('plant', `${userId}:${plantId}`),
+            RedisCacheService.delete('plants:stats', userId),
         ]);
 
         return updated as PlantResponse;
@@ -218,6 +201,15 @@ export class PlantService {
 
     // ============ MARK AS HARVESTED ============
     static async markAsHarvested(userId: number, plantId: number): Promise<PlantResponse> {
+        const plant = await prisma.plantTracking.findFirst({
+            where: { id: plantId, userId },
+            select: { plantName: true }
+        });
+
+        if (!plant) {
+            throw new Error('Plant not found');
+        }
+
         const updated = await prisma.plantTracking.update({
             where: { id: plantId },
             data: {
@@ -227,11 +219,14 @@ export class PlantService {
             },
         });
 
+        // Send harvest notification
+        await socketService.sendNotification(userId, 'Plant Harvested', `${plant.plantName} has been harvested successfully!`, 'PLANT_HARVEST');
+
         // Clear caches
         await Promise.all([
-            RedisCacheService.delPattern(`plants:${userId}:*`),
-            RedisCacheService.clearSinglePlantCache(userId, plantId),
-            RedisCacheService.del(`plants:stats:${userId}`),
+            RedisCacheService.clearUserPaginatedCache('plants', userId),
+            RedisCacheService.delete('plant', `${userId}:${plantId}`),
+            RedisCacheService.delete('plants:stats', userId),
         ]);
 
         return updated as PlantResponse;
@@ -239,15 +234,12 @@ export class PlantService {
 
     // ============ DELETE PLANT ============
     static async deletePlant(userId: number, plantId: number): Promise<{ message: string }> {
-        await prisma.plantTracking.delete({
-            where: { id: plantId },
-        });
+        await prisma.plantTracking.delete({ where: { id: plantId } });
 
-        // Clear caches
         await Promise.all([
-            RedisCacheService.delPattern(`plants:${userId}:*`),
-            RedisCacheService.clearSinglePlantCache(userId, plantId),
-            RedisCacheService.del(`plants:stats:${userId}`),
+            RedisCacheService.clearUserPaginatedCache('plants', userId),
+            RedisCacheService.delete('plant', `${userId}:${plantId}`),
+            RedisCacheService.delete('plants:stats', userId),
         ]);
 
         return { message: 'Plant deleted successfully' };
@@ -255,25 +247,12 @@ export class PlantService {
 
     // ============ GET PLANT STATISTICS ============
     static async getPlantStats(userId: number): Promise<any> {
-        // Check cache first
-        const cached = await RedisCacheService.getCachedPlantStats(userId);
+        const cached = await RedisCacheService.get('plants:stats', userId);
         if (cached) {
             return cached;
         }
 
-        // Single optimized query for all stats
-        const stats = await prisma.$queryRaw<Array<{
-            total: number;
-            healthy: number;
-            moderate: number;
-            critical: number;
-            harvest_ready: number;
-            seedling: number;
-            vegetative: number;
-            flowering: number;
-            fruiting: number;
-            harvesting: number;
-        }>>`
+        const stats = await prisma.$queryRaw<any[]>`
             SELECT 
                 COUNT(*) as total,
                 COUNT(CASE WHEN "healthStatus" = 'HEALTHY' THEN 1 END) as healthy,
@@ -289,29 +268,23 @@ export class PlantService {
             WHERE "userId" = ${userId}
         `;
 
-        const result = stats[0] || {
-            total: 0, healthy: 0, moderate: 0, critical: 0, harvest_ready: 0,
-            seedling: 0, vegetative: 0, flowering: 0, fruiting: 0, harvesting: 0
-        };
-
+        const result = stats[0] || {};
         const formattedStats = {
-            totalPlants: Number(result.total),
-            healthyPlants: Number(result.healthy),
-            moderatePlants: Number(result.moderate),
-            criticalPlants: Number(result.critical),
-            readyForHarvest: Number(result.harvest_ready),
+            totalPlants: Number(result.total) || 0,
+            healthyPlants: Number(result.healthy) || 0,
+            moderatePlants: Number(result.moderate) || 0,
+            criticalPlants: Number(result.critical) || 0,
+            readyForHarvest: Number(result.harvest_ready) || 0,
             byGrowthStage: {
-                seedling: Number(result.seedling),
-                vegetative: Number(result.vegetative),
-                flowering: Number(result.flowering),
-                fruiting: Number(result.fruiting),
-                harvesting: Number(result.harvesting),
+                seedling: Number(result.seedling) || 0,
+                vegetative: Number(result.vegetative) || 0,
+                flowering: Number(result.flowering) || 0,
+                fruiting: Number(result.fruiting) || 0,
+                harvesting: Number(result.harvesting) || 0,
             }
         };
 
-        // Cache stats
-        await RedisCacheService.cachePlantStats(userId, formattedStats);
-
+        await RedisCacheService.set('plants:stats', userId, formattedStats, 60);
         return formattedStats;
     }
 }
