@@ -1,8 +1,9 @@
-// modules/auth/auth.controller.ts
+
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { ResponseHandler } from '../../shared/utils/response';
 import { AuthRequest } from '../../shared/middleware/auth';
+import { EmailService } from '@/app/services/email.service';
 
 export class AuthController {
 
@@ -170,4 +171,5 @@ export class AuthController {
             ResponseHandler.error(res, error.message, 400);
         }
     }
+
 }

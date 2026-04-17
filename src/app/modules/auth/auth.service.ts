@@ -1,3 +1,4 @@
+
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -16,10 +17,11 @@ import {
     PaginatedUsersResponse,
     UserFilters
 } from './auth.type';
+import { EmailService } from '../../services/email.service';
 
 export class AuthService {
 
-    // ============ REGISTER ============
+
     static async register(data: RegisterInput): Promise<any> {
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email },
@@ -83,7 +85,7 @@ export class AuthService {
         return user;
     }
 
-    // ============ LOGIN ============
+
     static async login(data: LoginInput, ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
         const user = await prisma.user.findUnique({
             where: { email: data.email },
@@ -121,7 +123,6 @@ export class AuthService {
             throw new Error('Account is inactive. Please contact support.');
         }
 
-        // Generate tokens - FIXED: Use proper SignOptions type
         const accessToken = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
             config.jwt.secret,
@@ -151,7 +152,6 @@ export class AuthService {
             },
         });
 
-        // Cache user profile briefly
         await RedisCacheService.setFast(`auth:profile:${user.id}`, user, 300);
 
         return {
@@ -177,7 +177,96 @@ export class AuthService {
         };
     }
 
-    // ============ REFRESH TOKEN ============
+    static async updateProfile(userId: number, data: UpdateProfileInput) {
+
+        const updateData: any = {};
+
+        if (data.name !== undefined && data.name !== null) {
+            updateData.name = data.name;
+        }
+        if (data.phoneNumber !== undefined && data.phoneNumber !== null) {
+            updateData.phoneNumber = data.phoneNumber;
+
+        }
+        if (data.address !== undefined && data.address !== null) {
+            updateData.address = data.address;
+
+        }
+        if (data.profileImage !== undefined && data.profileImage !== null) {
+            updateData.profileImage = data.profileImage;
+
+        }
+
+
+        if (Object.keys(updateData).length === 0) {
+            throw new Error('No valid fields provided for update');
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+                address: true,
+                profileImage: true,
+                role: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        await RedisCacheService.del(`auth:profile:${userId}`);
+
+        await RedisCacheService.delPattern(`auth:profile:${userId}:*`);
+
+
+        return updatedUser;
+    }
+
+
+    static async getProfile(userId: number): Promise<any> {
+        const cacheKey = `auth:profile:${userId}`;
+
+        // Try cache
+        const cached = await RedisCacheService.getFast<any>(cacheKey);
+        if (cached) {
+            console.log('📦 Returning cached profile for user:', userId);
+            return cached;
+        }
+
+        console.log('🔍 Fetching fresh profile for user:', userId);
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                status: true,
+                phoneNumber: true,
+                address: true,
+                profileImage: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Cache for 5 minutes
+        await RedisCacheService.setFast(cacheKey, user, 300);
+
+        return user;
+    }
+
+
     static async refreshToken(refreshToken: string): Promise<TokenResponse> {
         const token = await prisma.refreshToken.findFirst({
             where: {
@@ -192,14 +281,12 @@ export class AuthService {
             throw new Error('Invalid or expired refresh token');
         }
 
-        // FIXED: Use proper SignOptions type
         const newAccessToken = jwt.sign(
             { id: token.user.id, email: token.user.email, role: token.user.role },
             config.jwt.secret,
             { expiresIn: config.jwt.accessTokenExpiresIn as jwt.SignOptions['expiresIn'] }
         );
 
-        // Optionally rotate refresh token (for better security)
         const newRefreshToken = crypto.randomBytes(40).toString('hex');
         const newRefreshTokenExpiry = new Date();
         newRefreshTokenExpiry.setDate(newRefreshTokenExpiry.getDate() + 7);
@@ -224,8 +311,6 @@ export class AuthService {
             expiresIn: config.jwt.accessTokenExpiresIn,
         };
     }
-
-    // ============ LOGOUT ============
     static async logout(userId: number, refreshToken?: string): Promise<MessageResponse> {
         if (refreshToken) {
             await prisma.refreshToken.updateMany({
@@ -243,13 +328,12 @@ export class AuthService {
             },
         });
 
-        // Clear user cache
         await RedisCacheService.del(`auth:profile:${userId}`);
 
         return { message: 'Logged out successfully' };
     }
 
-    // ============ LOGOUT ALL DEVICES ============
+
     static async logoutAll(userId: number): Promise<MessageResponse> {
         await prisma.refreshToken.updateMany({
             where: { userId: userId, revoked: false },
@@ -261,7 +345,7 @@ export class AuthService {
         return { message: 'Logged out from all devices' };
     }
 
-    // ============ CHANGE PASSWORD ============
+
     static async changePassword(userId: number, data: ChangePasswordInput): Promise<MessageResponse> {
         const user = await prisma.user.findUnique({
             where: { id: userId },
@@ -284,7 +368,6 @@ export class AuthService {
             data: { password: hashedPassword },
         });
 
-        // Revoke all refresh tokens for security
         await prisma.refreshToken.updateMany({
             where: { userId: userId, revoked: false },
             data: { revoked: true },
@@ -299,22 +382,39 @@ export class AuthService {
             },
         });
 
-        // Clear user cache
         await RedisCacheService.del(`auth:profile:${userId}`);
 
         return { message: 'Password changed successfully' };
     }
 
-    // ============ FORGOT PASSWORD ============
     static async forgotPassword(email: string, ipAddress?: string): Promise<MessageResponse> {
         const user = await prisma.user.findUnique({
             where: { email },
-            select: { id: true, email: true }
+            select: { id: true, email: true, name: true }
         });
 
-        if (user) {
-            const resetToken = crypto.randomBytes(32).toString('hex');
-            const expiresAt = new Date();
+        if (!user) {
+            console.log(`Password reset requested for non-existent email: ${email}`);
+            return { message: 'If email exists, reset link will be sent' };
+        }
+
+        const existingToken = await prisma.passwordResetToken.findFirst({
+            where: {
+                email: email,
+                used: false,
+                expiresAt: { gt: new Date() },
+            },
+        });
+
+        let resetToken: string;
+        let expiresAt: Date;
+
+        if (existingToken) {
+            resetToken = existingToken.token;
+            expiresAt = existingToken.expiresAt;
+        } else {
+            resetToken = crypto.randomBytes(32).toString('hex');
+            expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 1);
 
             await prisma.passwordResetToken.create({
@@ -325,17 +425,34 @@ export class AuthService {
                     userId: user.id,
                 },
             });
-
-            // In production, send email here
-            console.log(`Password reset token for ${email}: ${resetToken}`);
-            console.log(`Reset link: ${config.appUrl}/reset-password?token=${resetToken}`);
         }
 
-        return { message: 'If email exists, reset link will be sent' };
+        try {
+            await EmailService.sendPasswordResetEmail(email, resetToken, user.name);
+            console.log(`Password reset email sent to ${email} with token: ${resetToken}`);
+        } catch (emailError) {
+            console.error('Failed to send password reset email:', emailError);
+            throw new Error('Unable to send password reset email. Please try again later.');
+        }
+
+        await prisma.auditLog.create({
+            data: {
+                userId: user.id,
+                action: 'FORGOT_PASSWORD',
+                entity: 'User',
+                entityId: user.id,
+                ipAddress: ipAddress,
+            },
+        });
+
+        return { message: 'Password reset link has been sent to your email address' };
     }
 
-    // ============ RESET PASSWORD ============
     static async resetPassword(token: string, newPassword: string, ipAddress?: string): Promise<MessageResponse> {
+        if (newPassword.length < 8) {
+            throw new Error('Password must be at least 8 characters long');
+        }
+
         const resetToken = await prisma.passwordResetToken.findFirst({
             where: {
                 token: token,
@@ -345,16 +462,21 @@ export class AuthService {
         });
 
         if (!resetToken) {
-            throw new Error('Invalid or expired reset token');
+            throw new Error('Invalid or expired reset token. Please request a new password reset.');
         }
 
         const user = await prisma.user.findUnique({
             where: { email: resetToken.email },
-            select: { id: true }
+            select: { id: true, name: true, email: true, password: true }
         });
 
         if (!user) {
             throw new Error('User not found');
+        }
+
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        if (isSamePassword) {
+            throw new Error('New password cannot be the same as the old password');
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, config.bcrypt.saltRounds);
@@ -374,6 +496,12 @@ export class AuthService {
             }),
         ]);
 
+        try {
+            await EmailService.sendPasswordResetSuccessEmail(user.email, user.name);
+        } catch (emailError) {
+            console.error('Failed to send password reset success email:', emailError);
+        }
+
         await prisma.auditLog.create({
             data: {
                 userId: user.id,
@@ -384,137 +512,13 @@ export class AuthService {
             },
         });
 
-        // Clear user cache
         await RedisCacheService.del(`auth:profile:${user.id}`);
 
-        return { message: 'Password reset successfully' };
+        return { message: 'Password has been reset successfully. You can now login with your new password.' };
     }
-
-    // ============ GET PROFILE WITH CACHE ============
-    static async getProfile(userId: number): Promise<any> {
-        const cacheKey = `auth:profile:${userId}`;
-
-        // Try cache
-        const cached = await RedisCacheService.getFast<any>(cacheKey);
-        if (cached) {
-            return cached;
-        }
-
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                vendorProfile: {
-                    include: {
-                        produce: {
-                            take: 5,
-                            orderBy: { createdAt: 'desc' },
-                            select: {
-                                id: true,
-                                name: true,
-                                price: true,
-                                category: true,
-                                availableQuantity: true,
-                            }
-                        },
-                        rentalSpaces: {
-                            where: { availability: true },
-                            take: 5,
-                            select: {
-                                id: true,
-                                location: true,
-                                size: true,
-                                price: true,
-                            }
-                        },
-                        sustainabilityCert: true,
-                    },
-                },
-                orders: {
-                    take: 10,
-                    orderBy: { orderDate: 'desc' },
-                    include: {
-                        produce: {
-                            select: { name: true, price: true }
-                        },
-                    },
-                },
-                communityPosts: {
-                    take: 5,
-                    orderBy: { postDate: 'desc' },
-                    select: {
-                        id: true,
-                        postContent: true,
-                        postDate: true,
-                    }
-                },
-                plantTrackings: {
-                    take: 5,
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        id: true,
-                        plantName: true,
-                        healthStatus: true,
-                        growthStage: true,
-                    }
-                },
-                notifications: {
-                    where: { isRead: false },
-                    take: 10,
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        id: true,
-                        title: true,
-                        message: true,
-                        type: true,
-                        createdAt: true,
-                    }
-                },
-            },
-        });
-
-        if (!user) {
-            throw new Error('User not found');
-        }
-
-        // Cache for 5 minutes
-        await RedisCacheService.setFast(cacheKey, user, 300);
-
-        return user;
-    }
-
-    // ============ UPDATE PROFILE ============
-    static async updateProfile(userId: number, data: UpdateProfileInput) {
-        const updateData: any = {};
-        if (data.name !== undefined) updateData.name = data.name;
-        if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber;
-        if (data.address !== undefined) updateData.address = data.address;
-        if (data.profileImage !== undefined) updateData.profileImage = data.profileImage;
-
-        const user = await prisma.user.update({
-            where: { id: userId },
-            data: updateData,
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                phoneNumber: true,
-                address: true,
-                profileImage: true,
-                role: true,
-            },
-        });
-
-        // Clear user cache
-        await RedisCacheService.del(`auth:profile:${userId}`);
-
-        return user;
-    }
-
-    // ============ GET ALL USERS WITH PAGINATION ============
     static async getAllUsers(page: number = 1, limit: number = 10, filters?: UserFilters): Promise<PaginatedUsersResponse> {
         const cacheKey = `auth:users:${page}:${limit}:${JSON.stringify(filters)}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<PaginatedUsersResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -572,13 +576,12 @@ export class AuthService {
             }
         };
 
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
 
         return response;
     }
 
-    // ============ UPDATE USER STATUS ============
+
     static async updateUserStatus(userId: number, status: UserStatus, adminId: number) {
         const user = await prisma.user.update({
             where: { id: userId },
@@ -595,7 +598,6 @@ export class AuthService {
             },
         });
 
-        // Clear caches
         await Promise.all([
             RedisCacheService.del(`auth:profile:${userId}`),
             RedisCacheService.delPattern('auth:users:*'),
@@ -603,8 +605,6 @@ export class AuthService {
 
         return user;
     }
-
-    // ============ DELETE USER ============
     static async deleteUser(userId: number, adminId: number): Promise<MessageResponse> {
         await prisma.user.update({
             where: { id: userId },
@@ -614,7 +614,6 @@ export class AuthService {
             },
         });
 
-        // Clear caches
         await Promise.all([
             RedisCacheService.del(`auth:profile:${userId}`),
             RedisCacheService.delPattern('auth:users:*'),

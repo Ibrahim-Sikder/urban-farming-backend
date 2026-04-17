@@ -1,7 +1,5 @@
 import { CertificationStatus, OrderStatus } from '@prisma/client';
 import { PaginationParams, DateRangeFilter } from '../../shared/types/common.types';
-
-// ============ INPUT TYPES ============
 export interface UpdateVendorProfileInput {
     farmName?: string;
     farmLocation?: string;
@@ -59,7 +57,6 @@ export interface VendorOrderQueryParams extends PaginationParams {
     dateRange?: DateRangeFilter;
 }
 
-// ============ RESPONSE TYPES ============
 export interface MessageResponse {
     message: string;
 }
@@ -152,5 +149,4 @@ export interface RevenueReportResponse {
     }>;
 }
 
-// Re-export common paginated response
 export { PaginatedResponse } from '../../shared/types/common.types';

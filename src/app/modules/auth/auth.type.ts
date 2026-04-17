@@ -1,7 +1,5 @@
 import { UserStatus, Role, CertificationStatus } from '@prisma/client';
 import { PaginationParams } from '../../shared/types/common.types';
-
-// ============ INPUT TYPES ============
 export interface RegisterInput {
     name: string;
     email: string;
@@ -114,5 +112,5 @@ export interface PaginatedUsersResponse {
     };
 }
 
-// Re-export common types
+
 export { PaginatedResponse } from '../../shared/types/common.types';

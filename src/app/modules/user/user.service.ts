@@ -13,12 +13,9 @@ import {
 } from './user.type';
 
 export class UserService {
-
-    // ============ DASHBOARD STATS WITH CACHE ============
     static async getDashboardStats(userId: number): Promise<DashboardStatsResponse> {
         const cacheKey = `user:dashboard:${userId}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<DashboardStatsResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -96,18 +93,13 @@ export class UserService {
             recentPlants,
             recentNotifications,
         };
-
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
 
         return response;
     }
-
-    // ============ GET ORDERS WITH PAGINATION AND FILTERS ============
     static async getOrders(userId: number, params: UserOrderQueryParams = {}): Promise<OrdersResponse> {
         const cacheKey = `user:orders:${userId}:${JSON.stringify(params)}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<OrdersResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -118,8 +110,6 @@ export class UserService {
         const skip = (page - 1) * limit;
         const sortBy = params.sortBy || 'orderDate';
         const sortOrder = params.sortOrder || 'desc';
-
-        // Build where conditions
         const where: any = { userId };
 
         if (params.status) {
@@ -179,17 +169,14 @@ export class UserService {
             }
         };
 
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
 
         return response;
     }
 
-    // ============ GET RENTALS WITH PAGINATION ============
     static async getRentals(userId: number, params: UserRentalQueryParams = {}): Promise<PaginatedRentalsResponse> {
         const cacheKey = `user:rentals:${userId}:${JSON.stringify(params)}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<PaginatedRentalsResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -200,8 +187,6 @@ export class UserService {
         const skip = (page - 1) * limit;
         const sortBy = params.sortBy || 'orderDate';
         const sortOrder = params.sortOrder || 'desc';
-
-        // Build where conditions
         const where: any = { userId };
 
         if (params.status) {
@@ -257,17 +242,13 @@ export class UserService {
             }
         };
 
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
 
         return response;
     }
 
-    // ============ GET PLANTS WITH PAGINATION AND FILTERS ============
     static async getPlants(userId: number, params: UserPlantQueryParams = {}): Promise<PaginatedPlantsResponse> {
         const cacheKey = `user:plants:${userId}:${JSON.stringify(params)}`;
-
-        // Try cache
         const cached = await RedisCacheService.getFast<PaginatedPlantsResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -278,8 +259,6 @@ export class UserService {
         const skip = (page - 1) * limit;
         const sortBy = params.sortBy || 'lastUpdated';
         const sortOrder = params.sortOrder || 'desc';
-
-        // Build where conditions
         const where: any = { userId };
 
         if (params.healthStatus) {
@@ -339,13 +318,11 @@ export class UserService {
             }
         };
 
-        // Cache for 2 minutes
         await RedisCacheService.setFast(cacheKey, response, 120);
 
         return response;
     }
 
-    // ============ GET SINGLE PLANT DETAILS ============
     static async getPlantById(userId: number, plantId: number): Promise<PlantResponse | null> {
         const cacheKey = `user:plant:${userId}:${plantId}`;
 
@@ -388,14 +365,11 @@ export class UserService {
             lastUpdated: plant.lastUpdated,
             createdAt: plant.createdAt,
         };
-
-        // Cache for 5 minutes
         await RedisCacheService.setFast(cacheKey, response, 300);
 
         return response;
     }
 
-    // ============ GET ORDER DETAILS ============
     static async getOrderById(userId: number, orderId: number): Promise<any | null> {
         const cacheKey = `user:order:${userId}:${orderId}`;
 
@@ -458,14 +432,11 @@ export class UserService {
                 }
             }
         };
-
-        // Cache for 5 minutes
         await RedisCacheService.setFast(cacheKey, response, 300);
 
         return response;
     }
 
-    // ============ GET RENTAL DETAILS ============
     static async getRentalById(userId: number, rentalId: number): Promise<RentalResponse | null> {
         const cacheKey = `user:rental:${userId}:${rentalId}`;
 
@@ -521,13 +492,11 @@ export class UserService {
             }
         };
 
-        // Cache for 5 minutes
         await RedisCacheService.setFast(cacheKey, response, 300);
 
         return response;
     }
 
-    // ============ INVALIDATE USER CACHES ============
     static async invalidateUserCaches(userId: number): Promise<void> {
         await Promise.all([
             RedisCacheService.delPattern(`user:dashboard:${userId}`),

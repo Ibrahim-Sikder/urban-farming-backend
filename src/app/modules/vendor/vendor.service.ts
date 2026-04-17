@@ -1,775 +1,1020 @@
-import { Prisma } from '@prisma/client';
+
+import { CertificationStatus, OrderStatus, Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
-import { PrismaQueryBuilder } from '../../shared/utils/prisma-query-builder';
-import { CertificationStatus } from '@prisma/client';
 import {
-    UpdateVendorProfileInput,
     CreateProduceInput,
-    UpdateProduceInput,
     CreateRentalSpaceInput,
-    UpdateRentalSpaceInput,
+    MessageResponse,
+    PaginatedResponse,
+    RevenueReportResponse,
     SubmitCertificationInput,
     UpdateOrderStatusInput,
-    VendorProduceQueryParams,
-    VendorOrderQueryParams,
-    VendorProfileResponse,
-    VendorProduceResponse,
-    VendorOrderResponse,
+    UpdateProduceInput,
+    UpdateRentalSpaceInput,
+    UpdateVendorProfileInput,
     VendorBookingResponse,
-    RevenueReportResponse,
-    MessageResponse,
-    PaginatedResponse
+    VendorOrderQueryParams,
+    VendorOrderResponse,
+    VendorProduceQueryParams,
+    VendorProduceResponse,
+    VendorProfileResponse
 } from './vendor.type';
 
 export class VendorService {
 
-    // ============ PROFILE MANAGEMENT ============
-
     static async getVendorProfile(userId: number): Promise<VendorProfileResponse> {
-        const cacheKey = `vendor:profile:${userId}`;
+        try {
+            const cacheKey = `vendor:profile:${userId}`;
+            const cached = await RedisCacheService.getFast<VendorProfileResponse>(cacheKey);
+            if (cached) {
+                return cached;
+            }
 
-        // Try cache
-        const cached = await RedisCacheService.getFast<VendorProfileResponse>(cacheKey);
-        if (cached) {
-            return cached;
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            phoneNumber: true,
+                            address: true,
+                        }
+                    },
+                    produce: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 10,
+                        select: {
+                            id: true,
+                            name: true,
+                            description: true,
+                            price: true,
+                            category: true,
+                            certificationStatus: true,
+                            availableQuantity: true,
+                            createdAt: true,
+                            updatedAt: true,
+                        }
+                    },
+                    rentalSpaces: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 10,
+                        select: {
+                            id: true,
+                            location: true,
+                            size: true,
+                            price: true,
+                            availability: true,
+                            createdAt: true,
+                            updatedAt: true,
+                        }
+                    },
+                    sustainabilityCert: true
+                }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const [totalProducts, totalOrders, completedOrders, totalRevenue] = await Promise.all([
+                prisma.produce.count({ where: { vendorId: vendor.id } }),
+                prisma.order.count({ where: { vendorId: vendor.id } }),
+                prisma.order.count({ where: { vendorId: vendor.id, status: OrderStatus.COMPLETED } }),
+                prisma.order.aggregate({
+                    where: { vendorId: vendor.id, status: OrderStatus.COMPLETED },
+                    _sum: { totalPrice: true }
+                })
+            ]);
+
+            const availableSpaces = await prisma.rentalSpace.count({
+                where: { vendorId: vendor.id, availability: true }
+            });
+
+            const pendingOrders = await prisma.order.count({
+                where: { vendorId: vendor.id, status: OrderStatus.PENDING }
+            });
+
+            const response: VendorProfileResponse = {
+                id: vendor.id,
+                farmName: vendor.farmName,
+                farmLocation: vendor.farmLocation,
+                certificationStatus: vendor.certificationStatus,
+                user: {
+                    id: vendor.user.id,
+                    name: vendor.user.name,
+                    email: vendor.user.email,
+                    phoneNumber: vendor.user.phoneNumber || undefined,
+                    address: vendor.user.address || undefined,
+                },
+                stats: {
+                    totalProducts,
+                    totalRentalSpaces: vendor.rentalSpaces.length,
+                    availableSpaces,
+                    totalOrders,
+                    pendingOrders,
+                    completedOrders,
+                    totalRevenue: totalRevenue._sum.totalPrice || 0,
+                },
+                produce: vendor.produce,
+                rentalSpaces: vendor.rentalSpaces,
+                sustainabilityCert: vendor.sustainabilityCert || undefined,
+                createdAt: vendor.createdAt,
+                updatedAt: vendor.updatedAt,
+            };
+
+            // Cache for 5 minutes
+            await RedisCacheService.setFast(cacheKey, response, 300);
+
+            return response;
+        } catch (error: any) {
+            console.error('Error in getVendorProfile:', error);
+            throw new Error(error.message || 'Failed to fetch vendor profile');
         }
-
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT 
-                vp.id,
-                vp."farmName",
-                vp."farmLocation",
-                vp."certificationStatus",
-                vp."createdAt",
-                vp."updatedAt",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."phoneNumber" as user_phone,
-                u.address as user_address
-            FROM "VendorProfile" vp
-            LEFT JOIN "User" u ON vp."userId" = u.id
-            WHERE vp."userId" = ${userId}
-            LIMIT 1
-        `;
-
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-
-        const vendorData = vendor[0];
-
-        // Get stats
-        const stats = await prisma.$queryRaw<any[]>`
-            SELECT 
-                (SELECT COUNT(*) FROM "Produce" WHERE "vendorId" = ${vendorData.id}) as totalProducts,
-                (SELECT COUNT(*) FROM "RentalSpace" WHERE "vendorId" = ${vendorData.id}) as totalRentalSpaces,
-                (SELECT COUNT(*) FROM "RentalSpace" WHERE "vendorId" = ${vendorData.id} AND availability = true) as availableSpaces,
-                (SELECT COUNT(*) FROM "Order" WHERE "vendorId" = ${vendorData.id}) as totalOrders,
-                (SELECT COUNT(*) FROM "Order" WHERE "vendorId" = ${vendorData.id} AND status = 'PENDING') as pendingOrders,
-                (SELECT COUNT(*) FROM "Order" WHERE "vendorId" = ${vendorData.id} AND status = 'COMPLETED') as completedOrders,
-                (SELECT COALESCE(SUM("totalPrice"), 0) FROM "Order" WHERE "vendorId" = ${vendorData.id} AND status = 'COMPLETED') as totalRevenue
-        `;
-
-        const statsData = stats[0];
-
-        // Get recent produce
-        const produce = await prisma.$queryRaw<any[]>`
-            SELECT id, name, description, price, category, "certificationStatus", "availableQuantity", "createdAt", "updatedAt"
-            FROM "Produce"
-            WHERE "vendorId" = ${vendorData.id}
-            ORDER BY "createdAt" DESC
-            LIMIT 10
-        `;
-
-        // Get recent rental spaces
-        const rentalSpaces = await prisma.$queryRaw<any[]>`
-            SELECT id, location, size, price, availability, "createdAt", "updatedAt"
-            FROM "RentalSpace"
-            WHERE "vendorId" = ${vendorData.id}
-            ORDER BY "createdAt" DESC
-            LIMIT 10
-        `;
-
-        // Get certification
-        const cert = await prisma.$queryRaw<any[]>`
-            SELECT id, "certifyingAgency", "certificationDate", "expiryDate", "documentUrl", "verificationStatus"
-            FROM "SustainabilityCert"
-            WHERE "vendorId" = ${vendorData.id}
-            LIMIT 1
-        `;
-
-        const response: VendorProfileResponse = {
-            id: vendorData.id,
-            farmName: vendorData.farmName,
-            farmLocation: vendorData.farmLocation,
-            certificationStatus: vendorData.certificationStatus,
-            user: {
-                id: vendorData.user_id,
-                name: vendorData.user_name,
-                email: vendorData.user_email,
-                phoneNumber: vendorData.user_phone || undefined,
-                address: vendorData.user_address || undefined,
-            },
-            stats: {
-                totalProducts: Number(statsData.totalproducts) || 0,
-                totalRentalSpaces: Number(statsData.totalrentalspaces) || 0,
-                availableSpaces: Number(statsData.availablespaces) || 0,
-                totalOrders: Number(statsData.totalorders) || 0,
-                pendingOrders: Number(statsData.pendingorders) || 0,
-                completedOrders: Number(statsData.completedorders) || 0,
-                totalRevenue: Number(statsData.totalrevenue) || 0,
-            },
-            produce: produce,
-            rentalSpaces: rentalSpaces,
-            sustainabilityCert: cert[0] || null,
-            createdAt: vendorData.createdAt,
-            updatedAt: vendorData.updatedAt,
-        };
-
-        // Cache for 5 minutes
-        await RedisCacheService.setFast(cacheKey, response, 300);
-
-        return response;
     }
 
-    static async updateVendorProfile(userId: number, data: UpdateVendorProfileInput): Promise<MessageResponse> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+    static async updateVendorProfile(userId: number, data: UpdateVendorProfileInput): Promise<VendorProfileResponse> {
+        try {
+            const existingVendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            phoneNumber: true,
+                            address: true,
+                        }
+                    }
+                }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (!existingVendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const updatedVendor = await prisma.vendorProfile.update({
+                where: { userId },
+                data: {
+                    ...(data.farmName !== undefined && { farmName: data.farmName }),
+                    ...(data.farmLocation !== undefined && { farmLocation: data.farmLocation }),
+                    updatedAt: new Date(),
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            phoneNumber: true,
+                            address: true,
+                        }
+                    },
+                    produce: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 5,
+                        select: {
+                            id: true,
+                            name: true,
+                            price: true,
+                            availableQuantity: true,
+                        }
+                    },
+                    rentalSpaces: {
+                        where: { availability: true },
+                        take: 5,
+                        select: {
+                            id: true,
+                            location: true,
+                            price: true,
+                        }
+                    },
+                    sustainabilityCert: true
+                }
+            });
+
+
+            await RedisCacheService.del(`vendor:profile:${userId}`);
+
+            const [totalProducts, totalOrders, completedOrders, totalRevenue] = await Promise.all([
+                prisma.produce.count({ where: { vendorId: updatedVendor.id } }),
+                prisma.order.count({ where: { vendorId: updatedVendor.id } }),
+                prisma.order.count({ where: { vendorId: updatedVendor.id, status: OrderStatus.COMPLETED } }),
+                prisma.order.aggregate({
+                    where: { vendorId: updatedVendor.id, status: OrderStatus.COMPLETED },
+                    _sum: { totalPrice: true }
+                })
+            ]);
+
+            const availableSpaces = await prisma.rentalSpace.count({
+                where: { vendorId: updatedVendor.id, availability: true }
+            });
+
+            const pendingOrders = await prisma.order.count({
+                where: { vendorId: updatedVendor.id, status: OrderStatus.PENDING }
+            });
+
+            const response: VendorProfileResponse = {
+                id: updatedVendor.id,
+                farmName: updatedVendor.farmName,
+                farmLocation: updatedVendor.farmLocation,
+                certificationStatus: updatedVendor.certificationStatus,
+                user: {
+                    id: updatedVendor.user.id,
+                    name: updatedVendor.user.name,
+                    email: updatedVendor.user.email,
+                    phoneNumber: updatedVendor.user.phoneNumber || undefined,
+                    address: updatedVendor.user.address || undefined,
+                },
+                stats: {
+                    totalProducts,
+                    totalRentalSpaces: updatedVendor.rentalSpaces.length,
+                    availableSpaces,
+                    totalOrders,
+                    pendingOrders,
+                    completedOrders,
+                    totalRevenue: totalRevenue._sum.totalPrice || 0,
+                },
+                produce: updatedVendor.produce,
+                rentalSpaces: updatedVendor.rentalSpaces,
+                sustainabilityCert: updatedVendor.sustainabilityCert || undefined,
+                createdAt: updatedVendor.createdAt,
+                updatedAt: updatedVendor.updatedAt,
+            };
+
+            return response;
+        } catch (error: any) {
+            console.error('Error in updateVendorProfile:', error);
+            if (error.code === 'P2025') {
+                throw new Error('Vendor profile not found');
+            }
+            throw new Error(error.message || 'Failed to update vendor profile');
         }
-
-        await prisma.$executeRaw`
-            UPDATE "VendorProfile"
-            SET 
-                "farmName" = COALESCE(${data.farmName}, "farmName"),
-                "farmLocation" = COALESCE(${data.farmLocation}, "farmLocation"),
-                "updatedAt" = NOW()
-            WHERE "userId" = ${userId}
-        `;
-
-        // Clear cache
-        await RedisCacheService.del(`vendor:profile:${userId}`);
-
-        return { message: 'Vendor profile updated successfully' };
     }
 
-    // ============ PRODUCE MANAGEMENT WITH QUERY BUILDER ============
 
     static async createProduce(userId: number, data: CreateProduceInput): Promise<VendorProduceResponse> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id, "certificationStatus" FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                select: { id: true, certificationStatus: true }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const produce = await prisma.produce.create({
+                data: {
+                    vendorId: vendor.id,
+                    name: data.name,
+                    description: data.description,
+                    price: data.price,
+                    category: data.category,
+                    availableQuantity: data.availableQuantity,
+                    certificationStatus: vendor.certificationStatus,
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    price: true,
+                    category: true,
+                    certificationStatus: true,
+                    availableQuantity: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
+            });
+
+            await Promise.all([
+                RedisCacheService.del(`vendor:profile:${userId}`),
+                RedisCacheService.delPattern(`vendor:produce:${userId}:*`)
+            ]);
+
+            return produce;
+        } catch (error: any) {
+            console.error('Error in createProduce:', error);
+            throw new Error(error.message || 'Failed to create produce');
         }
-
-        const vendorData = vendor[0];
-
-        const produce = await prisma.$queryRaw<any[]>`
-            INSERT INTO "Produce" ("vendorId", name, description, price, category, "availableQuantity", "certificationStatus", "createdAt", "updatedAt")
-            VALUES (${vendorData.id}, ${data.name}, ${data.description}, ${data.price}, ${data.category}, ${data.availableQuantity}, ${vendorData.certificationStatus}, NOW(), NOW())
-            RETURNING id, name, description, price, category, "certificationStatus", "availableQuantity", "createdAt", "updatedAt"
-        `;
-
-        // Clear vendor profile cache
-        await RedisCacheService.del(`vendor:profile:${userId}`);
-        await RedisCacheService.delPattern(`vendor:produce:${userId}:*`);
-
-        return produce[0] as VendorProduceResponse;
     }
 
     static async getVendorProduce(
         userId: number,
         queryParams: VendorProduceQueryParams = {}
     ): Promise<PaginatedResponse<VendorProduceResponse>> {
-        const cacheKey = `vendor:produce:${userId}:${JSON.stringify(queryParams)}`;
+        try {
+            const cacheKey = `vendor:produce:${userId}:${JSON.stringify(queryParams)}`;
 
-        // Try cache
-        const cached = await RedisCacheService.getFast<PaginatedResponse<VendorProduceResponse>>(cacheKey);
-        if (cached) {
-            return cached;
+            const cached = await RedisCacheService.getFast<PaginatedResponse<VendorProduceResponse>>(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                select: { id: true }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const page = queryParams.page || 1;
+            const limit = queryParams.limit || 10;
+            const skip = (page - 1) * limit;
+            const where: Prisma.ProduceWhereInput = {
+                vendorId: vendor.id
+            };
+
+            if (queryParams.searchTerm) {
+                where.OR = [
+                    { name: { contains: queryParams.searchTerm, mode: 'insensitive' } },
+                    { description: { contains: queryParams.searchTerm, mode: 'insensitive' } },
+                    { category: { contains: queryParams.searchTerm, mode: 'insensitive' } },
+                ];
+            }
+
+            if (queryParams.category) {
+                where.category = queryParams.category;
+            }
+
+            if (queryParams.certificationStatus) {
+                where.certificationStatus = queryParams.certificationStatus;
+            }
+
+            if (queryParams.minPrice !== undefined || queryParams.maxPrice !== undefined) {
+                where.price = {};
+                if (queryParams.minPrice !== undefined) {
+                    where.price.gte = queryParams.minPrice;
+                }
+                if (queryParams.maxPrice !== undefined) {
+                    where.price.lte = queryParams.maxPrice;
+                }
+            }
+
+            const sortOrder = queryParams.sortOrder === 'asc' ? 'asc' : 'desc';
+            const sortBy = queryParams.sortBy || 'createdAt';
+
+            const [produce, total] = await Promise.all([
+                prisma.produce.findMany({
+                    where,
+                    skip,
+                    take: limit,
+                    orderBy: { [sortBy]: sortOrder },
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        price: true,
+                        category: true,
+                        certificationStatus: true,
+                        availableQuantity: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    }
+                }),
+                prisma.produce.count({ where })
+            ]);
+
+            const totalPages = Math.ceil(total / limit);
+
+            const response: PaginatedResponse<VendorProduceResponse> = {
+                data: produce,
+                meta: {
+                    page,
+                    limit,
+                    total,
+                    totalPages,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1,
+                }
+            };
+
+            await RedisCacheService.setFast(cacheKey, response, 120);
+
+            return response;
+        } catch (error: any) {
+            console.error('Error in getVendorProduce:', error);
+            throw new Error(error.message || 'Failed to fetch produce');
         }
-
-        // Get vendor ID
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
-
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-
-        const vendorId = vendor[0].id;
-
-        // Build query using reusable query builder
-        const queryBuilder = new PrismaQueryBuilder('Produce', queryParams as any);
-
-        // Set searchable fields
-        queryBuilder.setSearchFields(['name', 'description', 'category']);
-
-        // Add vendor filter
-        const vendorCondition = Prisma.sql`"vendorId" = ${vendorId}`;
-        queryBuilder.addCustomCondition(vendorCondition);
-
-        // Add price range filters
-        const conditions: Prisma.Sql[] = [];
-        if (queryParams.minPrice !== undefined) {
-            conditions.push(Prisma.sql`price >= ${queryParams.minPrice}`);
-        }
-        if (queryParams.maxPrice !== undefined) {
-            conditions.push(Prisma.sql`price <= ${queryParams.maxPrice}`);
-        }
-        if (queryParams.category) {
-            conditions.push(Prisma.sql`category = ${queryParams.category}`);
-        }
-        if (queryParams.certificationStatus) {
-            conditions.push(Prisma.sql`"certificationStatus" = ${queryParams.certificationStatus}`);
-        }
-
-        if (conditions.length > 0) {
-            const combinedCondition = Prisma.sql`${Prisma.join(conditions, ' AND ')}`;
-            queryBuilder.addCustomCondition(combinedCondition);
-        }
-
-        // Custom query
-        const customQuery = Prisma.sql`
-            SELECT 
-                id, name, description, price, category, 
-                "certificationStatus", "availableQuantity", 
-                "createdAt", "updatedAt"
-            FROM "Produce"
-        `;
-
-        const result = await queryBuilder.execute<VendorProduceResponse>(customQuery);
-
-        // Cache for 2 minutes
-        await RedisCacheService.setFast(cacheKey, result, 120);
-
-        return result;
     }
 
     static async updateProduce(userId: number, produceId: number, data: UpdateProduceInput): Promise<VendorProduceResponse> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
+            const produce = await prisma.produce.findFirst({
+                where: {
+                    id: produceId,
+                    vendor: { userId }
+                }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (!produce) {
+                throw new Error('Produce not found or unauthorized');
+            }
+
+            const updateData: Prisma.ProduceUpdateInput = {};
+            if (data.name !== undefined) updateData.name = data.name;
+            if (data.description !== undefined) updateData.description = data.description;
+            if (data.price !== undefined) updateData.price = data.price;
+            if (data.category !== undefined) updateData.category = data.category;
+            if (data.availableQuantity !== undefined) updateData.availableQuantity = data.availableQuantity;
+            updateData.updatedAt = new Date();
+
+            const updatedProduce = await prisma.produce.update({
+                where: { id: produceId },
+                data: updateData,
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    price: true,
+                    category: true,
+                    certificationStatus: true,
+                    availableQuantity: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
+            });
+            await Promise.all([
+                RedisCacheService.del(`vendor:profile:${userId}`),
+                RedisCacheService.delPattern(`vendor:produce:${userId}:*`),
+                RedisCacheService.del(`produce:${produceId}`)
+            ]);
+
+            return updatedProduce;
+        } catch (error: any) {
+            console.error('Error in updateProduce:', error);
+            if (error.code === 'P2025') {
+                throw new Error('Produce not found');
+            }
+            throw new Error(error.message || 'Failed to update produce');
         }
-
-        const vendorId = vendor[0].id;
-
-        // Check if produce belongs to vendor
-        const existing = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "Produce" WHERE id = ${produceId} AND "vendorId" = ${vendorId} LIMIT 1
-        `;
-
-        if (!existing || existing.length === 0) {
-            throw new Error('Produce not found');
-        }
-
-        const updated = await prisma.$queryRaw<any[]>`
-            UPDATE "Produce"
-            SET 
-                name = COALESCE(${data.name}, name),
-                description = COALESCE(${data.description}, description),
-                price = COALESCE(${data.price}, price),
-                category = COALESCE(${data.category}, category),
-                "availableQuantity" = COALESCE(${data.availableQuantity}, "availableQuantity"),
-                "updatedAt" = NOW()
-            WHERE id = ${produceId}
-            RETURNING id, name, description, price, category, "certificationStatus", "availableQuantity", "createdAt", "updatedAt"
-        `;
-
-        // Clear caches
-        await Promise.all([
-            RedisCacheService.del(`vendor:profile:${userId}`),
-            RedisCacheService.delPattern(`vendor:produce:${userId}:*`),
-            RedisCacheService.del(`produce:${produceId}`)
-        ]);
-
-        return updated[0] as VendorProduceResponse;
     }
 
     static async deleteProduce(userId: number, produceId: number): Promise<MessageResponse> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
+            const orders = await prisma.order.findFirst({
+                where: { produceId }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (orders) {
+                throw new Error('Cannot delete produce with existing orders');
+            }
+            const result = await prisma.produce.deleteMany({
+                where: {
+                    id: produceId,
+                    vendor: { userId }
+                }
+            });
+
+            if (result.count === 0) {
+                throw new Error('Produce not found or unauthorized');
+            }
+            await Promise.all([
+                RedisCacheService.del(`vendor:profile:${userId}`),
+                RedisCacheService.delPattern(`vendor:produce:${userId}:*`),
+                RedisCacheService.del(`produce:${produceId}`)
+            ]);
+
+            return { message: 'Produce deleted successfully' };
+        } catch (error: any) {
+            console.error('Error in deleteProduce:', error);
+            throw new Error(error.message || 'Failed to delete produce');
         }
-
-        const vendorId = vendor[0].id;
-
-        // Check if produce has orders
-        const orders = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "Order" WHERE "produceId" = ${produceId} LIMIT 1
-        `;
-
-        if (orders && orders.length > 0) {
-            throw new Error('Cannot delete produce with existing orders');
-        }
-
-        await prisma.$executeRaw`
-            DELETE FROM "Produce" WHERE id = ${produceId} AND "vendorId" = ${vendorId}
-        `;
-
-        // Clear caches
-        await Promise.all([
-            RedisCacheService.del(`vendor:profile:${userId}`),
-            RedisCacheService.delPattern(`vendor:produce:${userId}:*`),
-            RedisCacheService.del(`produce:${produceId}`)
-        ]);
-
-        return { message: 'Produce deleted successfully' };
     }
 
-    // ============ RENTAL SPACE MANAGEMENT ============
-
     static async createRentalSpace(userId: number, data: CreateRentalSpaceInput): Promise<any> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                select: { id: true }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const space = await prisma.rentalSpace.create({
+                data: {
+                    vendorId: vendor.id,
+                    location: data.location,
+                    size: data.size,
+                    price: data.price,
+                    availability: true,
+                },
+                select: {
+                    id: true,
+                    location: true,
+                    size: true,
+                    price: true,
+                    availability: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
+            });
+            await Promise.all([
+                RedisCacheService.del(`vendor:profile:${userId}`),
+                RedisCacheService.del(`vendor:rental:spaces:${userId}`),
+                RedisCacheService.delPattern('rental:spaces:*')
+            ]);
+
+            return space;
+        } catch (error: any) {
+            console.error('Error in createRentalSpace:', error);
+            throw new Error(error.message || 'Failed to create rental space');
         }
-
-        const vendorId = vendor[0].id;
-
-        const space = await prisma.$queryRaw<any[]>`
-            INSERT INTO "RentalSpace" ("vendorId", location, size, price, availability, "createdAt", "updatedAt")
-            VALUES (${vendorId}, ${data.location}, ${data.size}, ${data.price}, true, NOW(), NOW())
-            RETURNING id, "vendorId", location, size, price, availability, "createdAt", "updatedAt"
-        `;
-
-        // Clear caches
-        await Promise.all([
-            RedisCacheService.del(`vendor:profile:${userId}`),
-            RedisCacheService.delPattern('rental:spaces:*')
-        ]);
-
-        return space[0];
     }
 
     static async getVendorRentalSpaces(userId: number): Promise<any[]> {
-        const cacheKey = `vendor:rental:spaces:${userId}`;
+        try {
+            const cacheKey = `vendor:rental:spaces:${userId}`;
 
-        const cached = await RedisCacheService.getFast<any[]>(cacheKey);
-        if (cached) {
-            return cached;
+            const cached = await RedisCacheService.getFast<any[]>(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                select: { id: true }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const spaces = await prisma.rentalSpace.findMany({
+                where: { vendorId: vendor.id },
+                include: {
+                    bookings: {
+                        select: {
+                            id: true,
+                            status: true,
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+            const spacesWithCount = spaces.map(space => ({
+                id: space.id,
+                location: space.location,
+                size: space.size,
+                price: space.price,
+                availability: space.availability,
+                createdAt: space.createdAt,
+                updatedAt: space.updatedAt,
+                vendorId: space.vendorId,
+                bookings_count: space.bookings.length
+            }));
+
+            await RedisCacheService.setFast(cacheKey, spacesWithCount, 300);
+
+            return spacesWithCount;
+        } catch (error: any) {
+            console.error('Error in getVendorRentalSpaces:', error);
+            throw new Error(error.message || 'Failed to fetch rental spaces');
         }
-
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
-
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-
-        const vendorId = vendor[0].id;
-
-        const spaces = await prisma.$queryRaw<any[]>`
-            SELECT 
-                rs.id,
-                rs.location,
-                rs.size,
-                rs.price,
-                rs.availability,
-                rs."createdAt",
-                rs."updatedAt",
-                COUNT(rb.id) as bookings_count
-            FROM "RentalSpace" rs
-            LEFT JOIN "RentalBooking" rb ON rs.id = rb."spaceId"
-            WHERE rs."vendorId" = ${vendorId}
-            GROUP BY rs.id
-            ORDER BY rs."createdAt" DESC
-        `;
-
-        await RedisCacheService.setFast(cacheKey, spaces, 300);
-
-        return spaces;
     }
 
     static async updateRentalSpace(userId: number, spaceId: number, data: UpdateRentalSpaceInput): Promise<any> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
+            const space = await prisma.rentalSpace.findFirst({
+                where: {
+                    id: spaceId,
+                    vendor: { userId }
+                }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (!space) {
+                throw new Error('Rental space not found or unauthorized');
+            }
+
+            const updateData: Prisma.RentalSpaceUpdateInput = {};
+            if (data.location !== undefined) updateData.location = data.location;
+            if (data.size !== undefined) updateData.size = data.size;
+            if (data.price !== undefined) updateData.price = data.price;
+            if (data.availability !== undefined) updateData.availability = data.availability;
+            updateData.updatedAt = new Date();
+
+            const updatedSpace = await prisma.rentalSpace.update({
+                where: { id: spaceId },
+                data: updateData,
+                select: {
+                    id: true,
+                    location: true,
+                    size: true,
+                    price: true,
+                    availability: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
+            });
+            await Promise.all([
+                RedisCacheService.del(`vendor:profile:${userId}`),
+                RedisCacheService.del(`vendor:rental:spaces:${userId}`),
+                RedisCacheService.delPattern('rental:spaces:*'),
+                RedisCacheService.del(`rental:space:${spaceId}`)
+            ]);
+
+            return updatedSpace;
+        } catch (error: any) {
+            console.error('Error in updateRentalSpace:', error);
+            throw new Error(error.message || 'Failed to update rental space');
         }
-
-        const vendorId = vendor[0].id;
-
-        const updated = await prisma.$queryRaw<any[]>`
-            UPDATE "RentalSpace"
-            SET 
-                location = COALESCE(${data.location}, location),
-                size = COALESCE(${data.size}, size),
-                price = COALESCE(${data.price}, price),
-                availability = COALESCE(${data.availability}, availability),
-                "updatedAt" = NOW()
-            WHERE id = ${spaceId} AND "vendorId" = ${vendorId}
-            RETURNING id, "vendorId", location, size, price, availability, "createdAt", "updatedAt"
-        `;
-
-        // Clear caches
-        await Promise.all([
-            RedisCacheService.del(`vendor:profile:${userId}`),
-            RedisCacheService.del(`vendor:rental:spaces:${userId}`),
-            RedisCacheService.delPattern('rental:spaces:*'),
-            RedisCacheService.del(`rental:space:${spaceId}`)
-        ]);
-
-        return updated[0];
     }
 
     static async deleteRentalSpace(userId: number, spaceId: number): Promise<MessageResponse> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
+            const bookings = await prisma.rentalBooking.findFirst({
+                where: { spaceId }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (bookings) {
+                throw new Error('Cannot delete space with existing bookings');
+            }
+
+            const result = await prisma.rentalSpace.deleteMany({
+                where: {
+                    id: spaceId,
+                    vendor: { userId }
+                }
+            });
+
+            if (result.count === 0) {
+                throw new Error('Rental space not found or unauthorized');
+            }
+            await Promise.all([
+                RedisCacheService.del(`vendor:profile:${userId}`),
+                RedisCacheService.del(`vendor:rental:spaces:${userId}`),
+                RedisCacheService.delPattern('rental:spaces:*'),
+                RedisCacheService.del(`rental:space:${spaceId}`)
+            ]);
+
+            return { message: 'Rental space deleted successfully' };
+        } catch (error: any) {
+            console.error('Error in deleteRentalSpace:', error);
+            throw new Error(error.message || 'Failed to delete rental space');
         }
-
-        const vendorId = vendor[0].id;
-
-        // Check if space has bookings
-        const bookings = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "RentalBooking" WHERE "spaceId" = ${spaceId} LIMIT 1
-        `;
-
-        if (bookings && bookings.length > 0) {
-            throw new Error('Cannot delete space with existing bookings');
-        }
-
-        await prisma.$executeRaw`
-            DELETE FROM "RentalSpace" WHERE id = ${spaceId} AND "vendorId" = ${vendorId}
-        `;
-
-        // Clear caches
-        await Promise.all([
-            RedisCacheService.del(`vendor:profile:${userId}`),
-            RedisCacheService.del(`vendor:rental:spaces:${userId}`),
-            RedisCacheService.delPattern('rental:spaces:*'),
-            RedisCacheService.del(`rental:space:${spaceId}`)
-        ]);
-
-        return { message: 'Rental space deleted successfully' };
     }
 
-    // ============ CERTIFICATION MANAGEMENT ============
-
     static async submitCertification(userId: number, data: SubmitCertificationInput): Promise<MessageResponse> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                include: { sustainabilityCert: true }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            if (vendor.sustainabilityCert) {
+                throw new Error('Certification already submitted');
+            }
+
+            await prisma.sustainabilityCert.create({
+                data: {
+                    vendorId: vendor.id,
+                    certifyingAgency: data.certifyingAgency,
+                    certificationDate: data.certificationDate,
+                    expiryDate: data.expiryDate,
+                    documentUrl: data.documentUrl,
+                    verificationStatus: CertificationStatus.PENDING,
+                }
+            });
+
+            await prisma.vendorProfile.update({
+                where: { userId },
+                data: { certificationStatus: CertificationStatus.PENDING }
+            });
+
+            await Promise.all([
+                RedisCacheService.del(`vendor:profile:${userId}`),
+                RedisCacheService.del(`vendor:cert:${userId}`)
+            ]);
+
+            return { message: 'Certification submitted successfully' };
+        } catch (error: any) {
+            console.error('Error in submitCertification:', error);
+            throw new Error(error.message || 'Failed to submit certification');
         }
-
-        const vendorId = vendor[0].id;
-
-        const existingCert = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "SustainabilityCert" WHERE "vendorId" = ${vendorId} LIMIT 1
-        `;
-
-        if (existingCert && existingCert.length > 0) {
-            throw new Error('Certification already submitted');
-        }
-
-        await prisma.$executeRaw`
-            INSERT INTO "SustainabilityCert" ("vendorId", "certifyingAgency", "certificationDate", "expiryDate", "documentUrl", "verificationStatus", "createdAt", "updatedAt")
-            VALUES (${vendorId}, ${data.certifyingAgency}, ${data.certificationDate}, ${data.expiryDate}, ${data.documentUrl}, 'PENDING', NOW(), NOW())
-        `;
-
-        // Clear cache
-        await RedisCacheService.del(`vendor:profile:${userId}`);
-
-        return { message: 'Certification submitted successfully' };
     }
 
     static async getCertificationStatus(userId: number): Promise<any> {
-        const cacheKey = `vendor:cert:${userId}`;
+        try {
+            const cacheKey = `vendor:cert:${userId}`;
 
-        const cached = await RedisCacheService.getFast<any>(cacheKey);
-        if (cached) {
-            return cached;
+            const cached = await RedisCacheService.getFast<any>(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                include: {
+                    sustainabilityCert: true
+                }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const result = {
+                certificationStatus: vendor.certificationStatus,
+                certification: vendor.sustainabilityCert || null,
+            };
+
+            await RedisCacheService.setFast(cacheKey, result, 300);
+
+            return result;
+        } catch (error: any) {
+            console.error('Error in getCertificationStatus:', error);
+            throw new Error(error.message || 'Failed to fetch certification status');
         }
-
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT 
-                vp."certificationStatus",
-                sc.id,
-                sc."certifyingAgency",
-                sc."certificationDate",
-                sc."expiryDate",
-                sc."verificationStatus"
-            FROM "VendorProfile" vp
-            LEFT JOIN "SustainabilityCert" sc ON vp.id = sc."vendorId"
-            WHERE vp."userId" = ${userId}
-            LIMIT 1
-        `;
-
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-
-        const result = {
-            certificationStatus: vendor[0].certificationStatus,
-            certification: vendor[0].id ? {
-                id: vendor[0].id,
-                certifyingAgency: vendor[0].certifyingAgency,
-                certificationDate: vendor[0].certificationDate,
-                expiryDate: vendor[0].expiryDate,
-                verificationStatus: vendor[0].verificationStatus,
-            } : null,
-        };
-
-        await RedisCacheService.setFast(cacheKey, result, 300);
-
-        return result;
     }
-
-    // ============ ORDER MANAGEMENT WITH QUERY BUILDER ============
 
     static async getVendorOrders(
         userId: number,
         queryParams: VendorOrderQueryParams = {}
     ): Promise<PaginatedResponse<VendorOrderResponse>> {
-        const cacheKey = `vendor:orders:${userId}:${JSON.stringify(queryParams)}`;
+        try {
+            const cacheKey = `vendor:orders:${userId}:${JSON.stringify(queryParams)}`;
 
-        const cached = await RedisCacheService.getFast<PaginatedResponse<VendorOrderResponse>>(cacheKey);
-        if (cached) {
-            return cached;
+            const cached = await RedisCacheService.getFast<PaginatedResponse<VendorOrderResponse>>(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                select: { id: true }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const page = queryParams.page || 1;
+            const limit = queryParams.limit || 10;
+            const skip = (page - 1) * limit;
+
+            const where: Prisma.OrderWhereInput = {
+                vendorId: vendor.id
+            };
+
+            if (queryParams.status) {
+                where.status = queryParams.status;
+            }
+
+            const [orders, total] = await Promise.all([
+                prisma.order.findMany({
+                    where,
+                    skip,
+                    take: limit,
+                    orderBy: { orderDate: 'desc' },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            }
+                        },
+                        produce: {
+                            select: {
+                                id: true,
+                                name: true,
+                                price: true,
+                            }
+                        }
+                    }
+                }),
+                prisma.order.count({ where })
+            ]);
+
+            const transformedOrders: VendorOrderResponse[] = orders.map(order => ({
+                id: order.id,
+                quantity: order.quantity,
+                totalPrice: order.totalPrice,
+                status: order.status,
+                orderDate: order.orderDate,
+                user: {
+                    id: order.user.id,
+                    name: order.user.name,
+                    email: order.user.email,
+                },
+                produce: {
+                    id: order.produce.id,
+                    name: order.produce.name,
+                },
+            }));
+
+            const totalPages = Math.ceil(total / limit);
+
+            const response: PaginatedResponse<VendorOrderResponse> = {
+                data: transformedOrders,
+                meta: {
+                    page,
+                    limit,
+                    total,
+                    totalPages,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1,
+                }
+            };
+
+            await RedisCacheService.setFast(cacheKey, response, 120);
+
+            return response;
+        } catch (error: any) {
+
+            throw new Error(error.message || 'Failed to fetch orders');
         }
-
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
-
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-
-        const vendorId = vendor[0].id;
-
-        // Build query using query builder
-        const queryBuilder = new PrismaQueryBuilder('Order', queryParams as any);
-
-        // Add vendor filter
-        const vendorCondition = Prisma.sql`"vendorId" = ${vendorId}`;
-        queryBuilder.addCustomCondition(vendorCondition);
-
-        // Add status filter
-        if (queryParams.status) {
-            const statusCondition = Prisma.sql`status = ${queryParams.status}`;
-            queryBuilder.addCustomCondition(statusCondition);
-        }
-
-        // Custom query with joins
-        const customQuery = Prisma.sql`
-            SELECT 
-                o.id,
-                o.quantity,
-                o."totalPrice",
-                o.status,
-                o."orderDate",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                p.id as produce_id,
-                p.name as produce_name
-            FROM "Order" o
-            LEFT JOIN "User" u ON o."userId" = u.id
-            LEFT JOIN "Produce" p ON o."produceId" = p.id
-        `;
-
-        const result = await queryBuilder.execute<VendorOrderResponse>(customQuery);
-
-        // Transform data
-        const transformedData = result.data.map((order: any) => ({
-            id: order.id,
-            quantity: order.quantity,
-            totalPrice: order.totalPrice,
-            status: order.status,
-            orderDate: order.orderDate,
-            user: {
-                id: order.user_id,
-                name: order.user_name,
-                email: order.user_email,
-            },
-            produce: {
-                id: order.produce_id,
-                name: order.produce_name,
-            },
-        }));
-
-        const response: PaginatedResponse<VendorOrderResponse> = {
-            data: transformedData,
-            meta: result.meta
-        };
-
-        await RedisCacheService.setFast(cacheKey, response, 120);
-
-        return response;
     }
 
     static async updateOrderStatus(userId: number, orderId: number, data: UpdateOrderStatusInput): Promise<MessageResponse> {
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
+        try {
+            const order = await prisma.order.findFirst({
+                where: {
+                    id: orderId,
+                    vendor: { userId }
+                }
+            });
 
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
+            if (!order) {
+                throw new Error('Order not found or unauthorized');
+            }
+
+            await prisma.order.update({
+                where: { id: orderId },
+                data: { status: data.status }
+            });
+
+            await Promise.all([
+                RedisCacheService.delPattern(`vendor:orders:${userId}:*`),
+                RedisCacheService.del(`order:${orderId}`)
+            ]);
+
+            return { message: 'Order status updated successfully' };
+        } catch (error: any) {
+
+            throw new Error(error.message || 'Failed to update order status');
         }
-
-        const vendorId = vendor[0].id;
-
-        await prisma.$executeRaw`
-            UPDATE "Order"
-            SET status = ${data.status}, "updatedAt" = NOW()
-            WHERE id = ${orderId} AND "vendorId" = ${vendorId}
-        `;
-
-        // Clear caches
-        await Promise.all([
-            RedisCacheService.delPattern(`vendor:orders:${userId}:*`),
-            RedisCacheService.del(`order:${orderId}`)
-        ]);
-
-        return { message: 'Order status updated successfully' };
     }
-
-    // ============ BOOKINGS MANAGEMENT ============
 
     static async getVendorBookings(userId: number): Promise<VendorBookingResponse[]> {
-        const cacheKey = `vendor:bookings:${userId}`;
+        try {
+            const cacheKey = `vendor:bookings:${userId}`;
 
-        const cached = await RedisCacheService.getFast<VendorBookingResponse[]>(cacheKey);
-        if (cached) {
-            return cached;
+            const cached = await RedisCacheService.getFast<VendorBookingResponse[]>(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                select: { id: true }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const bookings = await prisma.rentalBooking.findMany({
+                where: {
+                    space: {
+                        vendorId: vendor.id
+                    }
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        }
+                    },
+                    space: {
+                        select: {
+                            location: true,
+                            size: true,
+                            price: true,
+                        }
+                    }
+                },
+                orderBy: { orderDate: 'desc' }
+            });
+
+            const transformedBookings: VendorBookingResponse[] = bookings.map(booking => ({
+                id: booking.id,
+                spaceId: booking.spaceId,
+                startDate: booking.startDate,
+                endDate: booking.endDate,
+                status: booking.status,
+                orderDate: booking.orderDate,
+                user: {
+                    id: booking.user.id,
+                    name: booking.user.name,
+                    email: booking.user.email,
+                },
+                space: {
+                    location: booking.space.location,
+                    size: booking.space.size,
+                    price: booking.space.price,
+                },
+            }));
+
+            await RedisCacheService.setFast(cacheKey, transformedBookings, 300);
+
+            return transformedBookings;
+        } catch (error: any) {
+            console.error('Error in getVendorBookings:', error);
+            throw new Error(error.message || 'Failed to fetch bookings');
         }
-
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
-
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-
-        const vendorId = vendor[0].id;
-
-        const bookings = await prisma.$queryRaw<any[]>`
-            SELECT 
-                rb.id,
-                rb."spaceId",
-                rb."startDate",
-                rb."endDate",
-                rb.status,
-                rb."orderDate",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                rs.location as space_location,
-                rs.size as space_size,
-                rs.price as space_price
-            FROM "RentalBooking" rb
-            LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
-            LEFT JOIN "User" u ON rb."userId" = u.id
-            WHERE rs."vendorId" = ${vendorId}
-            ORDER BY rb."orderDate" DESC
-        `;
-
-        const transformedBookings: VendorBookingResponse[] = bookings.map((booking: any) => ({
-            id: booking.id,
-            spaceId: booking.spaceId,
-            startDate: booking.startDate,
-            endDate: booking.endDate,
-            status: booking.status,
-            orderDate: booking.orderDate,
-            user: {
-                id: booking.user_id,
-                name: booking.user_name,
-                email: booking.user_email,
-            },
-            space: {
-                location: booking.space_location,
-                size: Number(booking.space_size),
-                price: Number(booking.space_price),
-            },
-        }));
-
-        await RedisCacheService.setFast(cacheKey, transformedBookings, 300);
-
-        return transformedBookings;
     }
 
-    // ============ REVENUE REPORT ============
+
 
     static async getRevenueReport(userId: number): Promise<RevenueReportResponse> {
-        const cacheKey = `vendor:revenue:${userId}`;
+        try {
+            const cacheKey = `vendor:revenue:${userId}`;
 
-        const cached = await RedisCacheService.getFast<RevenueReportResponse>(cacheKey);
-        if (cached) {
-            return cached;
+            const cached = await RedisCacheService.getFast<RevenueReportResponse>(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            const vendor = await prisma.vendorProfile.findUnique({
+                where: { userId },
+                select: { id: true }
+            });
+
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+
+            const [revenueStats, topProducts] = await Promise.all([
+                prisma.order.aggregate({
+                    where: {
+                        vendorId: vendor.id,
+                        status: OrderStatus.COMPLETED
+                    },
+                    _sum: { totalPrice: true },
+                    _count: { id: true },
+                    _avg: { totalPrice: true }
+                }),
+                prisma.order.groupBy({
+                    by: ['produceId'],
+                    where: {
+                        vendorId: vendor.id,
+                        status: OrderStatus.COMPLETED
+                    },
+                    _sum: {
+                        quantity: true,
+                        totalPrice: true
+                    },
+                    orderBy: {
+                        _sum: {
+                            totalPrice: 'desc'
+                        }
+                    },
+                    take: 10
+                })
+            ]);
+
+            const productDetails = await Promise.all(
+                topProducts.map(async (product) => {
+                    const produce = await prisma.produce.findUnique({
+                        where: { id: product.produceId },
+                        select: { id: true, name: true }
+                    });
+                    return {
+                        productId: produce?.id || 0,
+                        productName: produce?.name || 'Unknown',
+                        quantitySold: product._sum.quantity || 0,
+                        revenue: product._sum.totalPrice || 0,
+                    };
+                })
+            );
+
+            const response: RevenueReportResponse = {
+                totalRevenue: revenueStats._sum.totalPrice || 0,
+                totalOrders: revenueStats._count.id || 0,
+                averageOrderValue: revenueStats._avg.totalPrice || 0,
+                topProducts: productDetails,
+            };
+
+            await RedisCacheService.setFast(cacheKey, response, 300);
+
+            return response;
+        } catch (error: any) {
+            console.error('Error in getRevenueReport:', error);
+            throw new Error(error.message || 'Failed to generate revenue report');
         }
-
-        const vendor = await prisma.$queryRaw<any[]>`
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${userId} LIMIT 1
-        `;
-
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-
-        const vendorId = vendor[0].id;
-
-        const report = await prisma.$queryRaw<any[]>`
-            SELECT 
-                COALESCE(SUM(o."totalPrice"), 0) as totalRevenue,
-                COUNT(o.id) as totalOrders,
-                COALESCE(AVG(o."totalPrice"), 0) as averageOrderValue,
-                json_agg(json_build_object(
-                    'productId', p.id,
-                    'productName', p.name,
-                    'quantitySold', o.quantity,
-                    'revenue', o."totalPrice"
-                )) as topProducts
-            FROM "Order" o
-            LEFT JOIN "Produce" p ON o."produceId" = p.id
-            WHERE o."vendorId" = ${vendorId} AND o.status = 'COMPLETED'
-            GROUP BY o."vendorId"
-        `;
-
-        const result = report[0] || {
-            totalRevenue: 0,
-            totalOrders: 0,
-            averageOrderValue: 0,
-            topproducts: []
-        };
-
-        const response: RevenueReportResponse = {
-            totalRevenue: Number(result.totalrevenue) || 0,
-            totalOrders: Number(result.totalorders) || 0,
-            averageOrderValue: Number(result.averageordervalue) || 0,
-            topProducts: result.topproducts || [],
-        };
-
-        await RedisCacheService.setFast(cacheKey, response, 300);
-
-        return response;
     }
 }

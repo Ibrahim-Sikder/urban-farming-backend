@@ -1,27 +1,28 @@
-// modules/rental/rental.routes.ts
+
 import { Router } from 'express';
 import { RentalController } from './rental.controller';
+import { authenticate, authorize } from '../../shared/middleware/auth';
 import { validate } from '../../shared/middleware/validation.middleware';
 import {
     createRentalBookingSchema,
     updateRentalBookingSchema,
     searchRentalSpaceSchema,
 } from './rental.validation';
-import { authenticate, authorize } from '../../shared/middleware/auth';
 
 const router = Router();
 
-// ============ PUBLIC ROUTES (Search Spaces) ============
 router.get('/spaces', validate(searchRentalSpaceSchema), RentalController.searchRentalSpaces);
 router.get('/spaces/:id', RentalController.getRentalSpaceById);
 
-// ============ PROTECTED ROUTES ============
 router.use(authenticate);
 
-// Booking Routes (Customer only)
-router.post('/bookings', authorize('CUSTOMER'), validate(createRentalBookingSchema), RentalController.createBooking);
-router.get('/bookings', authorize('CUSTOMER'), RentalController.getUserBookings);
-router.get('/bookings/:id', authorize('CUSTOMER'), RentalController.getBookingById);
-router.patch('/bookings/:id/cancel', authorize('CUSTOMER'), RentalController.cancelBooking);
+
+router.post('/bookings', validate(createRentalBookingSchema), RentalController.createBooking);
+router.get('/bookings', RentalController.getUserBookings);
+router.get('/bookings/:id', RentalController.getBookingById);
+router.post('/bookings/:id/cancel', RentalController.cancelBooking);
+
+router.get('/vendor/bookings', authorize('VENDOR', 'ADMIN'), RentalController.getVendorBookings);
+router.patch('/vendor/bookings/:id/status', authorize('VENDOR', 'ADMIN'), validate(updateRentalBookingSchema), RentalController.updateBookingStatus);
 
 export const rentalRoutes = router;

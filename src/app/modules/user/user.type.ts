@@ -124,5 +124,4 @@ export interface PaginatedPlantsResponse {
     };
 }
 
-// Re-export common types
 export { PaginatedResponse } from '../../shared/types/common.types';

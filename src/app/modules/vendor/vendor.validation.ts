@@ -1,4 +1,3 @@
-// modules/vendor/vendor.validation.ts
 import { z } from 'zod';
 
 export const updateVendorProfileSchema = z.object({
