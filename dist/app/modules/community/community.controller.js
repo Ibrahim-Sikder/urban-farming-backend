@@ -25,12 +25,17 @@ class CommunityController {
     }
     static async getAllPosts(req, res) {
         try {
-            const filters = {
+            const queryParams = {
                 page: req.query.page ? parseInt(req.query.page) : 1,
                 limit: req.query.limit ? parseInt(req.query.limit) : 10,
-                search: req.query.search,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
+                userId: req.query.userId ? parseInt(req.query.userId) : undefined,
+                dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom) : undefined,
+                dateTo: req.query.dateTo ? new Date(req.query.dateTo) : undefined,
             };
-            const result = await community_service_1.CommunityService.getAllPosts(filters);
+            const result = await community_service_1.CommunityService.getAllPosts(queryParams);
             response_1.ResponseHandler.success(res, result, 'Posts fetched successfully');
         }
         catch (error) {
@@ -58,6 +63,31 @@ class CommunityController {
             response_1.ResponseHandler.error(res, error.message, 400);
         }
     }
+    static async getUserPosts(req, res) {
+        try {
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+            };
+            const result = await community_service_1.CommunityService.getUserPosts(req.user.id, queryParams);
+            response_1.ResponseHandler.success(res, result, 'User posts fetched successfully');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 400);
+        }
+    }
+    static async getTrendingPosts(req, res) {
+        try {
+            const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+            const posts = await community_service_1.CommunityService.getTrendingPosts(limit);
+            response_1.ResponseHandler.success(res, posts, 'Trending posts fetched successfully');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 400);
+        }
+    }
     static async createComment(req, res) {
         try {
             const postId = parseInt(req.params.postId);
@@ -71,9 +101,14 @@ class CommunityController {
     static async getComments(req, res) {
         try {
             const postId = parseInt(req.params.postId);
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 20;
-            const comments = await community_service_1.CommunityService.getComments(postId, page, limit);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 20,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'asc',
+                userId: req.query.userId ? parseInt(req.query.userId) : undefined,
+            };
+            const comments = await community_service_1.CommunityService.getComments(postId, queryParams);
             response_1.ResponseHandler.success(res, comments, 'Comments fetched successfully');
         }
         catch (error) {

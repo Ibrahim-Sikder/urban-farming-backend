@@ -1,4 +1,3 @@
-// modules/rental/rental.controller.ts
 import { Request, Response } from 'express';
 import { RentalService } from './rental.service';
 import { ResponseHandler } from '../../shared/utils/response';
@@ -18,6 +17,9 @@ export class RentalController {
                 minPrice: req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined,
                 maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined,
                 availability: req.query.availability === 'true',
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                searchTerm: req.query.searchTerm as string,
             };
             const result = await RentalService.searchRentalSpaces(filters);
             ResponseHandler.success(res, result, 'Rental spaces fetched successfully');
@@ -48,7 +50,14 @@ export class RentalController {
 
     static async getUserBookings(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const bookings = await RentalService.getUserBookings(req.user!.id);
+            const filters = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                status: req.query.status as any,
+            };
+            const bookings = await RentalService.getUserBookings(req.user!.id, filters);
             ResponseHandler.success(res, bookings, 'Bookings fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);

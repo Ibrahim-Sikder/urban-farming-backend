@@ -1,7 +1,23 @@
-// modules/rental/rental.type.ts
 import { OrderStatus } from '@prisma/client';
+import {
+    PaginationParams,
+    PriceRangeFilter,
+    SizeRangeFilter,
+    LocationFilter,
+    DateRangeFilter,
+    PaginatedResponse
+} from '../../shared/types/common.types';
 
-// ============ INPUT TYPES ============
+// Extend common pagination params
+export interface SearchRentalSpaceInput extends PaginationParams, PriceRangeFilter, SizeRangeFilter, LocationFilter {
+    availability?: boolean;
+}
+
+export interface GetUserBookingsInput extends PaginationParams {
+    status?: OrderStatus;
+    dateRange?: DateRangeFilter;
+}
+
 export interface CreateRentalBookingInput {
     spaceId: number;
     startDate: Date;
@@ -13,18 +29,7 @@ export interface UpdateRentalBookingInput {
     cancellationReason?: string;
 }
 
-export interface SearchRentalSpaceInput {
-    location?: string;
-    minSize?: number;
-    maxSize?: number;
-    minPrice?: number;
-    maxPrice?: number;
-    availability?: boolean;
-    page?: number;
-    limit?: number;
-}
-
-// ============ RESPONSE TYPES ============
+// Response types
 export interface RentalSpaceResponse {
     id: number;
     vendorId: number;
@@ -68,10 +73,13 @@ export interface RentalBookingResponse {
     };
 }
 
+// Paginated response types
 export interface PaginatedRentalSpacesResponse {
     spaces: RentalSpaceResponse[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+    meta: PaginatedResponse<any>['meta'];
+}
+
+export interface PaginatedBookingsResponse {
+    bookings: RentalBookingResponse[];
+    meta: PaginatedResponse<any>['meta'];
 }

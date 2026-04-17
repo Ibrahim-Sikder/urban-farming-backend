@@ -1,4 +1,19 @@
-// modules/user/user.type.ts
+import { OrderStatus } from '@prisma/client';
+import { PaginationParams, DateRangeFilter } from '../../shared/types/common.types';
+
+export interface UserOrderQueryParams extends PaginationParams {
+    status?: OrderStatus;
+    dateRange?: DateRangeFilter;
+}
+
+export interface UserRentalQueryParams extends PaginationParams {
+    status?: OrderStatus;
+}
+
+export interface UserPlantQueryParams extends PaginationParams {
+    healthStatus?: string;
+    growthStage?: string;
+}
 
 export interface DashboardStatsResponse {
     stats: {
@@ -6,6 +21,7 @@ export interface DashboardStatsResponse {
         totalRentals: number;
         totalPlants: number;
         totalPosts: number;
+        totalUnreadNotifications: number;
     };
     recentOrders: Array<{
         id: number;
@@ -23,6 +39,14 @@ export interface DashboardStatsResponse {
         growthStage: string;
         plantedDate: Date;
     }>;
+    recentNotifications: Array<{
+        id: number;
+        title: string;
+        message: string;
+        type: string;
+        isRead: boolean;
+        createdAt: Date;
+    }>;
 }
 
 export interface OrdersResponse {
@@ -39,10 +63,14 @@ export interface OrdersResponse {
             };
         };
     }>;
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+    meta: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+    };
 }
 
 export interface RentalResponse {
@@ -55,6 +83,18 @@ export interface RentalResponse {
         location: string;
         size: number;
         price: number;
+    };
+}
+
+export interface PaginatedRentalsResponse {
+    rentals: RentalResponse[];
+    meta: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
     };
 }
 
@@ -71,3 +111,18 @@ export interface PlantResponse {
     lastUpdated: Date;
     createdAt: Date;
 }
+
+export interface PaginatedPlantsResponse {
+    plants: PlantResponse[];
+    meta: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+    };
+}
+
+// Re-export common types
+export { PaginatedResponse } from '../../shared/types/common.types';

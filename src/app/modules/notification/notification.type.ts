@@ -1,14 +1,16 @@
-// modules/notification/notification.type.ts
+import { PaginationParams } from '../../shared/types/common.types';
 
-export interface GetNotificationsQuery {
-    page?: number;
-    limit?: number;
+export interface GetNotificationsQuery extends PaginationParams {
     isRead?: boolean;
     type?: string;
 }
 
 export interface MarkAsReadInput {
     notificationIds: number[];
+}
+
+export interface MarkAllAsReadInput {
+    type?: string;
 }
 
 export interface NotificationResponse {
@@ -24,9 +26,29 @@ export interface NotificationResponse {
 
 export interface PaginatedNotificationsResponse {
     notifications: NotificationResponse[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+    meta: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+    };
     unreadCount: number;
 }
+
+export interface UnreadCountResponse {
+    unreadCount: number;
+}
+
+export interface BulkOperationResponse {
+    message: string;
+    count: number;
+}
+
+export interface MessageResponse {
+    message: string;
+}
+
+// Re-export common types
+export { PaginatedResponse } from '../../shared/types/common.types';

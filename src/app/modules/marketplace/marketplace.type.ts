@@ -1,5 +1,5 @@
-// modules/marketplace/marketplace.type.ts
 import { OrderStatus, CertificationStatus } from '@prisma/client';
+import { PaginationParams, PriceRangeFilter } from '../../shared/types/common.types';
 
 // ============ INPUT TYPES ============
 export interface CreateProduceInput {
@@ -37,15 +37,18 @@ export interface UpdateOrderStatusInput {
     status: OrderStatus;
 }
 
-export interface ProduceFilters {
+export interface ProduceFilters extends PaginationParams, PriceRangeFilter {
     category?: string;
     certificationStatus?: CertificationStatus;
-    minPrice?: number;
-    maxPrice?: number;
     search?: string;
     vendorId?: number;
-    page?: number;
-    limit?: number;
+    inStock?: boolean;
+    status?: string;
+}
+
+export interface CartItemInput {
+    produceId: number;
+    quantity: number;
 }
 
 // ============ RESPONSE TYPES ============
@@ -62,27 +65,30 @@ export interface ProduceResponse {
         farmName: string;
         user: {
             name: string;
+            email?: string;
         };
     };
     createdAt: Date;
     updatedAt: Date;
 }
 
-export interface CartResponse {
-    items: Array<{
+export interface CartItemResponse {
+    id: number;
+    quantity: number;
+    produce: {
         id: number;
-        quantity: number;
-        produce: {
-            id: number;
-            name: string;
-            price: number;
-            availableQuantity: number;
-            vendor: {
-                farmName: string;
-            };
+        name: string;
+        price: number;
+        availableQuantity: number;
+        vendor: {
+            farmName: string;
         };
-        subtotal: number;
-    }>;
+    };
+    subtotal: number;
+}
+
+export interface CartResponse {
+    items: CartItemResponse[];
     totalItems: number;
     totalPrice: number;
 }
@@ -102,10 +108,5 @@ export interface OrderResponse {
     };
 }
 
-export interface PaginatedProduceResponse {
-    produces: ProduceResponse[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-}
+// Re-export common paginated response
+export { PaginatedResponse } from '../../shared/types/common.types';

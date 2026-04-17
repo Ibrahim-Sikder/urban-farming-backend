@@ -1,4 +1,3 @@
-// modules/plant/plant.controller.ts
 import { Response } from 'express';
 import { PlantService } from './plant.service';
 import { AuthRequest } from '../../shared/middleware/auth';
@@ -17,8 +16,46 @@ export class PlantController {
 
     static async getUserPlants(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const plants = await PlantService.getUserPlants(req.user!.id);
-            ResponseHandler.success(res, plants, 'Plants fetched successfully');
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                searchTerm: req.query.searchTerm as string,
+                healthStatus: req.query.healthStatus as any,
+                growthStage: req.query.growthStage as any,
+                plantType: req.query.plantType as string,
+                minDaysOld: req.query.minDaysOld ? parseInt(req.query.minDaysOld as string) : undefined,
+                maxDaysOld: req.query.maxDaysOld ? parseInt(req.query.maxDaysOld as string) : undefined,
+            };
+
+            const result = await PlantService.getUserPlants(req.user!.id, queryParams);
+            ResponseHandler.success(res, result, 'Plants fetched successfully');
+        } catch (error: any) {
+            ResponseHandler.error(res, error.message, 400);
+        }
+    }
+
+    static async getAllPlants(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            // Admin only
+            if (req.user!.role !== 'ADMIN') {
+                ResponseHandler.error(res, 'Unauthorized', 403);
+                return;
+            }
+
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                searchTerm: req.query.searchTerm as string,
+                healthStatus: req.query.healthStatus as any,
+                growthStage: req.query.growthStage as any,
+            };
+
+            const result = await PlantService.getAllPlants(queryParams);
+            ResponseHandler.success(res, result, 'All plants fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
         }

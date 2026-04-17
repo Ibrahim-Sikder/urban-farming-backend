@@ -1,4 +1,3 @@
-// modules/marketplace/marketplace.controller.ts
 import { Request, Response } from 'express';
 import { MarketplaceService } from './marketplace.service';
 import { ResponseHandler } from '../../shared/utils/response';
@@ -32,11 +31,14 @@ export class MarketplaceController {
             const filters = {
                 page: req.query.page ? parseInt(req.query.page as string) : 1,
                 limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                searchTerm: req.query.searchTerm as string,
                 category: req.query.category as string,
                 minPrice: req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined,
                 maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined,
-                search: req.query.search as string,
                 vendorId: req.query.vendorId ? parseInt(req.query.vendorId as string) : undefined,
+                inStock: req.query.inStock === 'true',
             };
             const result = await MarketplaceService.getAllProduce(filters);
             ResponseHandler.success(res, result, 'Products fetched successfully');
@@ -57,9 +59,17 @@ export class MarketplaceController {
 
     static async getVendorProduce(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 10;
-            const result = await MarketplaceService.getVendorProduce(req.user!.id, page, limit);
+            const filters = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                searchTerm: req.query.searchTerm as string,
+                category: req.query.category as string,
+                minPrice: req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined,
+                maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined,
+            };
+            const result = await MarketplaceService.getVendorProduce(req.user!.id, filters);
             ResponseHandler.success(res, result, 'Vendor products fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
@@ -138,9 +148,14 @@ export class MarketplaceController {
 
     static async getUserOrders(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 10;
-            const orders = await MarketplaceService.getUserOrders(req.user!.id, page, limit);
+            const filters = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                status: req.query.status as any,
+            };
+            const orders = await MarketplaceService.getUserOrders(req.user!.id, filters);
             ResponseHandler.success(res, orders, 'Orders fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);

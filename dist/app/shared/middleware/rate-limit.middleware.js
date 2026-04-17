@@ -1,0 +1,51 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.rateLimit = void 0;
+const response_1 = require("../utils/response");
+const requestCounts = new Map();
+const rateLimit = (options) => {
+    return (req, res, next) => {
+        let key;
+        const xForwardedFor = req.headers['x-forwarded-for'];
+        if (typeof xForwardedFor === 'string') {
+            key = xForwardedFor.split(',')[0].trim();
+        }
+        else if (Array.isArray(xForwardedFor) && xForwardedFor.length > 0) {
+            key = xForwardedFor[0];
+        }
+        else if (req.ip) {
+            key = req.ip;
+        }
+        else {
+            key = 'unknown';
+        }
+        const now = Date.now();
+        const record = requestCounts.get(key);
+        if (record) {
+            if (now > record.resetTime) {
+                requestCounts.set(key, {
+                    count: 1,
+                    resetTime: now + options.windowMs,
+                });
+                next();
+            }
+            else if (record.count < options.max) {
+                record.count++;
+                requestCounts.set(key, record);
+                next();
+            }
+            else {
+                response_1.ResponseHandler.error(res, 'Too many requests, please try again later.', 429);
+            }
+        }
+        else {
+            requestCounts.set(key, {
+                count: 1,
+                resetTime: now + options.windowMs,
+            });
+            next();
+        }
+    };
+};
+exports.rateLimit = rateLimit;
+//# sourceMappingURL=rate-limit.middleware.js.map

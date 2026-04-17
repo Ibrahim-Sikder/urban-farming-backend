@@ -33,9 +33,18 @@ class VendorController {
     }
     static async getProduce(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const result = await vendor_service_1.VendorService.getVendorProduce(req.user.id, page, limit);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
+                category: req.query.category,
+                minPrice: req.query.minPrice ? parseFloat(req.query.minPrice) : undefined,
+                maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice) : undefined,
+                certificationStatus: req.query.certificationStatus,
+            };
+            const result = await vendor_service_1.VendorService.getVendorProduce(req.user.id, queryParams);
             response_1.ResponseHandler.success(res, result, 'Products fetched successfully');
         }
         catch (error) {
@@ -120,10 +129,14 @@ class VendorController {
     }
     static async getOrders(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const status = req.query.status;
-            const result = await vendor_service_1.VendorService.getVendorOrders(req.user.id, page, limit, status);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                status: req.query.status,
+            };
+            const result = await vendor_service_1.VendorService.getVendorOrders(req.user.id, queryParams);
             response_1.ResponseHandler.success(res, result, 'Orders fetched successfully');
         }
         catch (error) {

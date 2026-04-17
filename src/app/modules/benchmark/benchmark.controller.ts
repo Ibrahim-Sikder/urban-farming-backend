@@ -110,6 +110,22 @@ export class BenchmarkController {
         }
     }
 
+    static async getBenchmarkHistory(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const params = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
+                endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+                operation: req.query.operation as string,
+            };
+            const history = await BenchmarkService.getBenchmarkHistory(params);
+            ResponseHandler.success(res, history, 'Benchmark history fetched successfully');
+        } catch (error: any) {
+            ResponseHandler.error(res, error.message, 500);
+        }
+    }
+
     static async cleanupBenchmarkData(req: AuthRequest, res: Response): Promise<void> {
         try {
             await BenchmarkService.cleanupTestData();

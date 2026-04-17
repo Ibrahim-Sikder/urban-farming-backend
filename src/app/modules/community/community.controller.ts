@@ -1,4 +1,3 @@
-// modules/community/community.controller.ts
 import { Request, Response } from 'express';
 import { CommunityService } from './community.service';
 import { ResponseHandler } from '../../shared/utils/response';
@@ -29,12 +28,17 @@ export class CommunityController {
 
     static async getAllPosts(req: Request, res: Response): Promise<void> {
         try {
-            const filters = {
+            const queryParams = {
                 page: req.query.page ? parseInt(req.query.page as string) : 1,
                 limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
-                search: req.query.search as string,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                searchTerm: req.query.searchTerm as string,
+                userId: req.query.userId ? parseInt(req.query.userId as string) : undefined,
+                dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined,
+                dateTo: req.query.dateTo ? new Date(req.query.dateTo as string) : undefined,
             };
-            const result = await CommunityService.getAllPosts(filters);
+            const result = await CommunityService.getAllPosts(queryParams);
             ResponseHandler.success(res, result, 'Posts fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
@@ -62,6 +66,31 @@ export class CommunityController {
         }
     }
 
+    static async getUserPosts(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+            };
+            const result = await CommunityService.getUserPosts(req.user!.id, queryParams);
+            ResponseHandler.success(res, result, 'User posts fetched successfully');
+        } catch (error: any) {
+            ResponseHandler.error(res, error.message, 400);
+        }
+    }
+
+    static async getTrendingPosts(req: Request, res: Response): Promise<void> {
+        try {
+            const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+            const posts = await CommunityService.getTrendingPosts(limit);
+            ResponseHandler.success(res, posts, 'Trending posts fetched successfully');
+        } catch (error: any) {
+            ResponseHandler.error(res, error.message, 400);
+        }
+    }
+
     // ============ COMMENT CONTROLLERS ============
 
     static async createComment(req: AuthRequest, res: Response): Promise<void> {
@@ -77,9 +106,14 @@ export class CommunityController {
     static async getComments(req: Request, res: Response): Promise<void> {
         try {
             const postId = parseInt(req.params.postId);
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 20;
-            const comments = await CommunityService.getComments(postId, page, limit);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 20,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'asc',
+                userId: req.query.userId ? parseInt(req.query.userId as string) : undefined,
+            };
+            const comments = await CommunityService.getComments(postId, queryParams);
             ResponseHandler.success(res, comments, 'Comments fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);

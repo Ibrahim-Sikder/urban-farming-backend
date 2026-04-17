@@ -6,14 +6,38 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
-dotenv_1.default.config({ path: path_1.default.join(__dirname, '../../../.env') });
+const possiblePaths = [
+    path_1.default.join(__dirname, '../../../.env'),
+    path_1.default.join(process.cwd(), '.env'),
+    path_1.default.resolve('.env'),
+];
+let envLoaded = false;
+for (const envPath of possiblePaths) {
+    const result = dotenv_1.default.config({ path: envPath });
+    if (!result.error) {
+        console.log(`✅ Loaded .env from: ${envPath}`);
+        envLoaded = true;
+        break;
+    }
+}
+if (!envLoaded) {
+    console.warn('⚠️ No .env file found, using system environment variables');
+}
 exports.config = {
     port: parseInt(process.env.PORT || '5000'),
     nodeEnv: process.env.NODE_ENV || 'development',
+    appUrl: process.env.APP_URL || 'http://localhost:5000',
     databaseUrl: process.env.DATABASE_URL,
     jwt: {
         secret: process.env.JWT_SECRET,
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+        accessTokenExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+        refreshTokenExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    },
+    redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: parseInt(process.env.REDIS_DB || '0'),
     },
     cors: {
         origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
@@ -22,13 +46,25 @@ exports.config = {
         windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
         max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
     },
+    bcrypt: {
+        saltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '10'),
+    },
 };
 if (!exports.config.jwt.secret) {
-    throw new Error('JWT_SECRET is required in .env file');
+    console.error('\n❌ JWT_SECRET is missing!');
+    console.error('Please add JWT_SECRET to your .env file');
+    console.error('Example: JWT_SECRET=your-super-secret-key-min-32-characters\n');
+    if (exports.config.nodeEnv === 'development') {
+        console.warn('⚠️ Using default JWT_SECRET for development only!');
+        exports.config.jwt.secret = 'dev-secret-key-do-not-use-in-production';
+    }
+    else {
+        process.exit(1);
+    }
 }
-if (!exports.config.databaseUrl) {
-    throw new Error('DATABASE_URL is required in .env file');
-}
-console.log('✅ Config loaded successfully');
+console.log('\n✅ Config loaded successfully');
 console.log(`📦 Environment: ${exports.config.nodeEnv}`);
+console.log(`🔐 JWT Secret: ${exports.config.jwt.secret ? '✓ Set' : '✗ Missing'}`);
+console.log(`🗄️  Database URL: ${exports.config.databaseUrl ? '✓ Configured' : '✗ Missing'}`);
+console.log(`📍 API URL: ${exports.config.appUrl}\n`);
 //# sourceMappingURL=index.js.map

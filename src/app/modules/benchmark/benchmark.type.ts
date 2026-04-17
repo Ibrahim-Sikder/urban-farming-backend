@@ -1,3 +1,5 @@
+import { PaginationParams } from '../../shared/types/common.types';
+
 export interface BenchmarkResult {
     operation: string;
     iterations: number;
@@ -28,6 +30,8 @@ export interface FullBenchmarkReport {
         totalTests: number;
         averageThroughput: number;
         overallAvgResponseMs: number;
+        fastestOperation: string;
+        slowestOperation: string;
         timestamp: string;
         environment: string;
     };
@@ -42,3 +46,17 @@ export interface FullBenchmarkReport {
         concurrent?: ConcurrentBenchmarkResult;
     };
 }
+
+export interface BenchmarkQueryParams extends PaginationParams {
+    operation?: string;
+    startDate?: Date;
+    endDate?: Date;
+}
+
+export interface BenchmarkHistory {
+    id: string;
+    report: FullBenchmarkReport;
+    createdAt: Date;
+}
+
+export { PaginatedResponse } from '../../shared/types/common.types';

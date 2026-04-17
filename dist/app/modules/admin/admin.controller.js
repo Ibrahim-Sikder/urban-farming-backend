@@ -19,11 +19,16 @@ class AdminController {
     }
     static async getAllUsers(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const role = req.query.role;
-            const status = req.query.status;
-            const result = await admin_service_1.AdminService.getAllUsers(page, limit, role, status);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
+                role: req.query.role,
+                status: req.query.status,
+            };
+            const result = await admin_service_1.AdminService.getAllUsers(queryParams);
             response_1.ResponseHandler.success(res, result, 'Users fetched successfully');
         }
         catch (error) {
@@ -52,10 +57,15 @@ class AdminController {
     }
     static async getAllVendors(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const status = req.query.status;
-            const result = await admin_service_1.AdminService.getAllVendors(page, limit, status);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
+                certificationStatus: req.query.certificationStatus,
+            };
+            const result = await admin_service_1.AdminService.getAllVendors(queryParams);
             response_1.ResponseHandler.success(res, result, 'Vendors fetched successfully');
         }
         catch (error) {
@@ -74,10 +84,15 @@ class AdminController {
     }
     static async getAllCertifications(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const status = req.query.status;
-            const result = await admin_service_1.AdminService.getAllCertifications(page, limit, status);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                verificationStatus: req.query.verificationStatus,
+                vendorId: req.query.vendorId ? parseInt(req.query.vendorId) : undefined,
+            };
+            const result = await admin_service_1.AdminService.getAllCertifications(queryParams);
             response_1.ResponseHandler.success(res, result, 'Certifications fetched successfully');
         }
         catch (error) {
@@ -96,9 +111,14 @@ class AdminController {
     }
     static async getAllRentalSpaces(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const result = await admin_service_1.AdminService.getAllRentalSpaces(page, limit);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
+            };
+            const result = await admin_service_1.AdminService.getAllRentalSpaces(queryParams);
             response_1.ResponseHandler.success(res, result, 'Rental spaces fetched successfully');
         }
         catch (error) {
@@ -107,10 +127,16 @@ class AdminController {
     }
     static async getAllOrders(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const status = req.query.status;
-            const result = await admin_service_1.AdminService.getAllOrders(page, limit, status);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                status: req.query.status,
+                minAmount: req.query.minAmount ? parseFloat(req.query.minAmount) : undefined,
+                maxAmount: req.query.maxAmount ? parseFloat(req.query.maxAmount) : undefined,
+            };
+            const result = await admin_service_1.AdminService.getAllOrders(queryParams);
             response_1.ResponseHandler.success(res, result, 'Orders fetched successfully');
         }
         catch (error) {

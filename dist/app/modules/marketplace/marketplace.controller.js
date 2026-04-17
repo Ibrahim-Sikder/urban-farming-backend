@@ -28,11 +28,14 @@ class MarketplaceController {
             const filters = {
                 page: req.query.page ? parseInt(req.query.page) : 1,
                 limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
                 category: req.query.category,
                 minPrice: req.query.minPrice ? parseFloat(req.query.minPrice) : undefined,
                 maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice) : undefined,
-                search: req.query.search,
                 vendorId: req.query.vendorId ? parseInt(req.query.vendorId) : undefined,
+                inStock: req.query.inStock === 'true',
             };
             const result = await marketplace_service_1.MarketplaceService.getAllProduce(filters);
             response_1.ResponseHandler.success(res, result, 'Products fetched successfully');
@@ -53,9 +56,17 @@ class MarketplaceController {
     }
     static async getVendorProduce(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const result = await marketplace_service_1.MarketplaceService.getVendorProduce(req.user.id, page, limit);
+            const filters = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
+                category: req.query.category,
+                minPrice: req.query.minPrice ? parseFloat(req.query.minPrice) : undefined,
+                maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice) : undefined,
+            };
+            const result = await marketplace_service_1.MarketplaceService.getVendorProduce(req.user.id, filters);
             response_1.ResponseHandler.success(res, result, 'Vendor products fetched successfully');
         }
         catch (error) {
@@ -130,9 +141,14 @@ class MarketplaceController {
     }
     static async getUserOrders(req, res) {
         try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 10;
-            const orders = await marketplace_service_1.MarketplaceService.getUserOrders(req.user.id, page, limit);
+            const filters = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                status: req.query.status,
+            };
+            const orders = await marketplace_service_1.MarketplaceService.getUserOrders(req.user.id, filters);
             response_1.ResponseHandler.success(res, orders, 'Orders fetched successfully');
         }
         catch (error) {

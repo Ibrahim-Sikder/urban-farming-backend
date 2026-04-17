@@ -8,17 +8,19 @@ const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const crypto_1 = __importDefault(require("crypto"));
 const prisma_1 = __importDefault(require("../../config/prisma"));
+const redis_cache_service_1 = __importDefault(require("../../services/redis-cache.service"));
 const config_1 = require("../../config");
 const client_1 = require("@prisma/client");
 class AuthService {
     static async register(data) {
         const existingUser = await prisma_1.default.user.findUnique({
             where: { email: data.email },
+            select: { id: true }
         });
         if (existingUser) {
             throw new Error('User already exists with this email');
         }
-        const hashedPassword = await bcryptjs_1.default.hash(data.password, 10);
+        const hashedPassword = await bcryptjs_1.default.hash(data.password, config_1.config.bcrypt.saltRounds);
         const user = await prisma_1.default.user.create({
             data: {
                 name: data.name,
@@ -61,6 +63,7 @@ class AuthService {
                 userAgent: data.userAgent,
             },
         });
+        await redis_cache_service_1.default.delPattern('auth:users:*');
         return user;
     }
     static async login(data, ipAddress, userAgent) {
@@ -96,7 +99,7 @@ class AuthService {
         if (user.status !== client_1.UserStatus.ACTIVE) {
             throw new Error('Account is inactive. Please contact support.');
         }
-        const accessToken = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, config_1.config.jwt.secret, { expiresIn: '15m' });
+        const accessToken = jsonwebtoken_1.default.sign({ id: user.id, email: user.email, role: user.role }, config_1.config.jwt.secret, { expiresIn: config_1.config.jwt.accessTokenExpiresIn });
         const refreshToken = crypto_1.default.randomBytes(40).toString('hex');
         const refreshTokenExpiry = new Date();
         refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7);
@@ -117,10 +120,11 @@ class AuthService {
                 userAgent: userAgent,
             },
         });
+        await redis_cache_service_1.default.setFast(`auth:profile:${user.id}`, user, 300);
         return {
             accessToken,
             refreshToken,
-            expiresIn: '15m',
+            expiresIn: config_1.config.jwt.accessTokenExpiresIn,
             user: {
                 id: user.id,
                 name: user.name,
@@ -151,10 +155,27 @@ class AuthService {
         if (!token) {
             throw new Error('Invalid or expired refresh token');
         }
-        const newAccessToken = jsonwebtoken_1.default.sign({ id: token.user.id, email: token.user.email, role: token.user.role }, config_1.config.jwt.secret, { expiresIn: '15m' });
+        const newAccessToken = jsonwebtoken_1.default.sign({ id: token.user.id, email: token.user.email, role: token.user.role }, config_1.config.jwt.secret, { expiresIn: config_1.config.jwt.accessTokenExpiresIn });
+        const newRefreshToken = crypto_1.default.randomBytes(40).toString('hex');
+        const newRefreshTokenExpiry = new Date();
+        newRefreshTokenExpiry.setDate(newRefreshTokenExpiry.getDate() + 7);
+        await prisma_1.default.$transaction([
+            prisma_1.default.refreshToken.update({
+                where: { id: token.id },
+                data: { revoked: true },
+            }),
+            prisma_1.default.refreshToken.create({
+                data: {
+                    token: newRefreshToken,
+                    userId: token.user.id,
+                    expiresAt: newRefreshTokenExpiry,
+                },
+            }),
+        ]);
         return {
             accessToken: newAccessToken,
-            expiresIn: '15m',
+            refreshToken: newRefreshToken,
+            expiresIn: config_1.config.jwt.accessTokenExpiresIn,
         };
     }
     static async logout(userId, refreshToken) {
@@ -172,6 +193,7 @@ class AuthService {
                 entityId: userId,
             },
         });
+        await redis_cache_service_1.default.del(`auth:profile:${userId}`);
         return { message: 'Logged out successfully' };
     }
     static async logoutAll(userId) {
@@ -179,11 +201,13 @@ class AuthService {
             where: { userId: userId, revoked: false },
             data: { revoked: true },
         });
+        await redis_cache_service_1.default.del(`auth:profile:${userId}`);
         return { message: 'Logged out from all devices' };
     }
     static async changePassword(userId, data) {
         const user = await prisma_1.default.user.findUnique({
             where: { id: userId },
+            select: { password: true }
         });
         if (!user) {
             throw new Error('User not found');
@@ -192,7 +216,7 @@ class AuthService {
         if (!isPasswordValid) {
             throw new Error('Current password is incorrect');
         }
-        const hashedPassword = await bcryptjs_1.default.hash(data.newPassword, 10);
+        const hashedPassword = await bcryptjs_1.default.hash(data.newPassword, config_1.config.bcrypt.saltRounds);
         await prisma_1.default.user.update({
             where: { id: userId },
             data: { password: hashedPassword },
@@ -209,11 +233,13 @@ class AuthService {
                 entityId: userId,
             },
         });
+        await redis_cache_service_1.default.del(`auth:profile:${userId}`);
         return { message: 'Password changed successfully' };
     }
     static async forgotPassword(email, ipAddress) {
         const user = await prisma_1.default.user.findUnique({
             where: { email },
+            select: { id: true, email: true }
         });
         if (user) {
             const resetToken = crypto_1.default.randomBytes(32).toString('hex');
@@ -228,6 +254,7 @@ class AuthService {
                 },
             });
             console.log(`Password reset token for ${email}: ${resetToken}`);
+            console.log(`Reset link: ${config_1.config.appUrl}/reset-password?token=${resetToken}`);
         }
         return { message: 'If email exists, reset link will be sent' };
     }
@@ -244,11 +271,12 @@ class AuthService {
         }
         const user = await prisma_1.default.user.findUnique({
             where: { email: resetToken.email },
+            select: { id: true }
         });
         if (!user) {
             throw new Error('User not found');
         }
-        const hashedPassword = await bcryptjs_1.default.hash(newPassword, 10);
+        const hashedPassword = await bcryptjs_1.default.hash(newPassword, config_1.config.bcrypt.saltRounds);
         await prisma_1.default.$transaction([
             prisma_1.default.user.update({
                 where: { id: user.id },
@@ -272,9 +300,15 @@ class AuthService {
                 ipAddress: ipAddress,
             },
         });
+        await redis_cache_service_1.default.del(`auth:profile:${user.id}`);
         return { message: 'Password reset successfully' };
     }
     static async getProfile(userId) {
+        const cacheKey = `auth:profile:${userId}`;
+        const cached = await redis_cache_service_1.default.getFast(cacheKey);
+        if (cached) {
+            return cached;
+        }
         const user = await prisma_1.default.user.findUnique({
             where: { id: userId },
             include: {
@@ -283,10 +317,23 @@ class AuthService {
                         produce: {
                             take: 5,
                             orderBy: { createdAt: 'desc' },
+                            select: {
+                                id: true,
+                                name: true,
+                                price: true,
+                                category: true,
+                                availableQuantity: true,
+                            }
                         },
                         rentalSpaces: {
                             where: { availability: true },
                             take: 5,
+                            select: {
+                                id: true,
+                                location: true,
+                                size: true,
+                                price: true,
+                            }
                         },
                         sustainabilityCert: true,
                     },
@@ -296,28 +343,47 @@ class AuthService {
                     orderBy: { orderDate: 'desc' },
                     include: {
                         produce: {
-                            select: { name: true },
+                            select: { name: true, price: true }
                         },
                     },
                 },
                 communityPosts: {
                     take: 5,
                     orderBy: { postDate: 'desc' },
+                    select: {
+                        id: true,
+                        postContent: true,
+                        postDate: true,
+                    }
                 },
                 plantTrackings: {
                     take: 5,
                     orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        plantName: true,
+                        healthStatus: true,
+                        growthStage: true,
+                    }
                 },
                 notifications: {
                     where: { isRead: false },
                     take: 10,
                     orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        title: true,
+                        message: true,
+                        type: true,
+                        createdAt: true,
+                    }
                 },
             },
         });
         if (!user) {
             throw new Error('User not found');
         }
+        await redis_cache_service_1.default.setFast(cacheKey, user, 300);
         return user;
     }
     static async updateProfile(userId, data) {
@@ -343,9 +409,15 @@ class AuthService {
                 role: true,
             },
         });
+        await redis_cache_service_1.default.del(`auth:profile:${userId}`);
         return user;
     }
     static async getAllUsers(page = 1, limit = 10, filters) {
+        const cacheKey = `auth:users:${page}:${limit}:${JSON.stringify(filters)}`;
+        const cached = await redis_cache_service_1.default.getFast(cacheKey);
+        if (cached) {
+            return cached;
+        }
         const skip = (page - 1) * limit;
         const where = {};
         if (filters?.role)
@@ -383,7 +455,20 @@ class AuthService {
             }),
             prisma_1.default.user.count({ where }),
         ]);
-        return { users, total, page, limit, totalPages: Math.ceil(total / limit) };
+        const totalPages = Math.ceil(total / limit);
+        const response = {
+            users,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            }
+        };
+        await redis_cache_service_1.default.setFast(cacheKey, response, 120);
+        return response;
     }
     static async updateUserStatus(userId, status, adminId) {
         const user = await prisma_1.default.user.update({
@@ -399,13 +484,24 @@ class AuthService {
                 type: 'SYSTEM',
             },
         });
+        await Promise.all([
+            redis_cache_service_1.default.del(`auth:profile:${userId}`),
+            redis_cache_service_1.default.delPattern('auth:users:*'),
+        ]);
         return user;
     }
     static async deleteUser(userId, adminId) {
         await prisma_1.default.user.update({
             where: { id: userId },
-            data: { status: client_1.UserStatus.INACTIVE },
+            data: {
+                status: client_1.UserStatus.INACTIVE,
+                deletedAt: new Date()
+            },
         });
+        await Promise.all([
+            redis_cache_service_1.default.del(`auth:profile:${userId}`),
+            redis_cache_service_1.default.delPattern('auth:users:*'),
+        ]);
         return { message: 'User deleted successfully' };
     }
 }

@@ -1,5 +1,5 @@
-// modules/auth/auth.type.ts
 import { UserStatus, Role, CertificationStatus } from '@prisma/client';
+import { PaginationParams } from '../../shared/types/common.types';
 
 // ============ INPUT TYPES ============
 export interface RegisterInput {
@@ -50,12 +50,10 @@ export interface UpdateUserStatusInput {
     status: UserStatus;
 }
 
-export interface UserFilters {
+export interface UserFilters extends PaginationParams {
     role?: string;
     status?: string;
     search?: string;
-    page?: number;
-    limit?: number;
 }
 
 // ============ RESPONSE TYPES ============
@@ -83,6 +81,7 @@ export interface AuthResponse {
 
 export interface TokenResponse {
     accessToken: string;
+    refreshToken?: string;
     expiresIn: string;
 }
 
@@ -105,8 +104,15 @@ export interface PaginatedUsersResponse {
             farmLocation: string;
         };
     }>;
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+    meta: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+    };
 }
+
+// Re-export common types
+export { PaginatedResponse } from '../../shared/types/common.types';

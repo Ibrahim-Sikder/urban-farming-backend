@@ -1,7 +1,14 @@
-
 import { HealthStatus, GrowthStage } from '@prisma/client';
+import { PaginationParams, DateRangeFilter } from '../../shared/types/common.types';
 
-// ============ INPUT TYPES ============
+// Extend common pagination params
+export interface PlantQueryParams extends PaginationParams {
+    healthStatus?: HealthStatus;
+    growthStage?: GrowthStage;
+    plantType?: string;
+    dateRange?: DateRangeFilter;
+}
+
 export interface CreatePlantInput {
     plantName: string;
     plantType: string;
@@ -25,25 +32,19 @@ export interface UpdateHealthStatusInput {
     notes?: string;
 }
 
-// ============ RESPONSE TYPES ============
 export interface PlantResponse {
     id: number;
     plantName: string;
     plantType: string;
     plantedDate: Date;
     expectedHarvestDate: Date;
-    actualHarvestDate?: Date;
+    actualHarvestDate?: Date | null;
     healthStatus: HealthStatus;
     growthStage: GrowthStage;
-    notes?: string;
+    notes?: string | null;
     lastUpdated: Date;
     createdAt: Date;
 }
 
-export interface PlantWithUserResponse extends PlantResponse {
-    user: {
-        id: number;
-        name: string;
-        email: string;
-    };
-}
+// Re-export common types for convenience
+export { PaginatedResponse } from '../../shared/types/common.types';

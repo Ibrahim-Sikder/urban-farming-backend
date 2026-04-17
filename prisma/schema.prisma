@@ -48,7 +48,7 @@ enum GrowthStage {
   HARVESTING
 }
 
-// ===================== CORE MODELS =====================
+// ===================== CORE MODELS WITH INDEXES =====================
 
 model User {
   id           Int        @id @default(autoincrement())
@@ -80,6 +80,8 @@ model User {
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([createdAt])
+  @@index([role, status])
 }
 
 model VendorProfile {
@@ -100,6 +102,7 @@ model VendorProfile {
 
   @@index([certificationStatus])
   @@index([userId])
+  @@index([createdAt])
 }
 
 model Produce {
@@ -122,6 +125,9 @@ model Produce {
   @@index([vendorId])
   @@index([category])
   @@index([certificationStatus])
+  @@index([price])
+  @@index([createdAt])
+  @@index([vendorId, certificationStatus])
 }
 
 model RentalSpace {
@@ -141,6 +147,8 @@ model RentalSpace {
   @@index([vendorId])
   @@index([availability])
   @@index([location])
+  @@index([price])
+  @@index([availability, price])
 }
 
 model RentalBooking {
@@ -159,6 +167,8 @@ model RentalBooking {
   @@index([userId])
   @@index([spaceId])
   @@index([status])
+  @@index([startDate, endDate])
+  @@index([userId, status])
 }
 
 model Order {
@@ -180,6 +190,8 @@ model Order {
   @@index([vendorId])
   @@index([status])
   @@index([orderDate])
+  @@index([userId, status])
+  @@index([vendorId, orderDate])
 }
 
 model CartItem {
@@ -194,6 +206,8 @@ model CartItem {
   produce Produce @relation(fields: [produceId], references: [id])
 
   @@unique([userId, produceId])
+  @@index([userId])
+  @@index([produceId])
 }
 
 model CommunityPost {
@@ -205,13 +219,13 @@ model CommunityPost {
 
   // Relations
   user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments CommunityComment[] // এই লাইনটি যোগ করুন
+  comments CommunityComment[]
 
   @@index([userId])
   @@index([postDate])
+  @@index([userId, postDate])
 }
 
-// ============ যোগ করুন: CommunityComment মডেল ============
 model CommunityComment {
   id        Int      @id @default(autoincrement())
   postId    Int
@@ -227,9 +241,10 @@ model CommunityComment {
   @@index([postId])
   @@index([userId])
   @@index([createdAt])
+  @@index([postId, createdAt])
 }
 
-// =====================================================
+// CRITICAL: This model needs the most optimization
 model PlantTracking {
   id                  Int          @id @default(autoincrement())
   userId              Int
@@ -247,9 +262,14 @@ model PlantTracking {
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([healthStatus])
-  @@index([expectedHarvestDate])
+  // CRITICAL INDEXES for sub-5ms queries
+  @@index([userId]) // Basic user filter
+  @@index([userId, createdAt(sort: Desc)]) // MOST IMPORTANT: User's recent plants
+  @@index([healthStatus]) // Health filter
+  @@index([growthStage]) // Growth stage filter
+  @@index([expectedHarvestDate]) // Harvest reminders
+  @@index([userId, healthStatus]) // User's plants by health
+  @@index([userId, growthStage]) // User's plants by stage
 }
 
 model SustainabilityCert {
@@ -265,7 +285,7 @@ model SustainabilityCert {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
-  // Relations - Fixed: Only one relation to VendorProfile
+  // Relations
   vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
@@ -273,7 +293,25 @@ model SustainabilityCert {
   @@index([expiryDate])
 }
 
-// ===================== AUTH MODELS =====================
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
 
 model RefreshToken {
   id        Int      @id @default(autoincrement())
@@ -288,6 +326,7 @@ model RefreshToken {
 
   @@index([token])
   @@index([userId])
+  @@index([expiresAt])
 }
 
 model PasswordResetToken {
@@ -304,6 +343,7 @@ model PasswordResetToken {
 
   @@index([token])
   @@index([email])
+  @@index([expiresAt])
 }
 
 model AuditLog {
@@ -325,22 +365,14 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+  @@index([entity, entityId])
 }
 
-model Notification {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  title     String
-  message   String
-  type      String
-  isRead    Boolean  @default(false)
-  metadata  Json?
-  createdAt DateTime @default(now())
+model BenchmarkReport {
+  id          String   @id
+  report_data Json
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRead])
-  @@index([createdAt])
+  @@index([created_at])
 }

@@ -1,4 +1,3 @@
-// modules/vendor/vendor.controller.ts
 import { Response } from 'express';
 import { VendorService } from './vendor.service';
 import { AuthRequest } from '../../shared/middleware/auth';
@@ -39,9 +38,18 @@ export class VendorController {
 
     static async getProduce(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 10;
-            const result = await VendorService.getVendorProduce(req.user!.id, page, limit);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                searchTerm: req.query.searchTerm as string,
+                category: req.query.category as string,
+                minPrice: req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined,
+                maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined,
+                certificationStatus: req.query.certificationStatus as any,
+            };
+            const result = await VendorService.getVendorProduce(req.user!.id, queryParams);
             ResponseHandler.success(res, result, 'Products fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);
@@ -132,11 +140,14 @@ export class VendorController {
 
     static async getOrders(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 10;
-            const status = req.query.status as string;
-
-            const result = await VendorService.getVendorOrders(req.user!.id, page, limit, status);
+            const queryParams = {
+                page: req.query.page ? parseInt(req.query.page as string) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+                sortBy: req.query.sortBy as string,
+                sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+                status: req.query.status as any,
+            };
+            const result = await VendorService.getVendorOrders(req.user!.id, queryParams);
             ResponseHandler.success(res, result, 'Orders fetched successfully');
         } catch (error: any) {
             ResponseHandler.error(res, error.message, 400);

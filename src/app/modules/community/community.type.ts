@@ -1,4 +1,4 @@
-// modules/community/community.type.ts
+import { PaginationParams } from '../../shared/types/common.types';
 
 export interface CreatePostInput {
     postContent: string;
@@ -12,10 +12,14 @@ export interface CreateCommentInput {
     content: string;
 }
 
-export interface PostFilters {
-    search?: string;
-    page?: number;
-    limit?: number;
+export interface PostQueryParams extends PaginationParams {
+    userId?: number;
+    dateFrom?: Date;
+    dateTo?: Date;
+}
+
+export interface CommentQueryParams extends PaginationParams {
+    userId?: number;
 }
 
 export interface PostResponse {
@@ -43,10 +47,9 @@ export interface CommentResponse {
     };
 }
 
-export interface PaginatedPostsResponse {
-    posts: PostResponse[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+export interface PostWithCommentsResponse extends PostResponse {
+    comments: CommentResponse[];
 }
+
+// Re-export common paginated response
+export { PaginatedResponse } from '../../shared/types/common.types';

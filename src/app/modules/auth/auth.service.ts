@@ -1,8 +1,8 @@
-// modules/auth/auth.service.ts
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import prisma from '../../config/prisma';
+import RedisCacheService from '../../services/redis-cache.service';
 import { config } from '../../config';
 import { UserStatus, Role, CertificationStatus } from '@prisma/client';
 import {
@@ -13,21 +13,24 @@ import {
     AuthResponse,
     TokenResponse,
     MessageResponse,
-    PaginatedUsersResponse
+    PaginatedUsersResponse,
+    UserFilters
 } from './auth.type';
 
 export class AuthService {
 
+    // ============ REGISTER ============
     static async register(data: RegisterInput): Promise<any> {
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email },
+            select: { id: true }
         });
 
         if (existingUser) {
             throw new Error('User already exists with this email');
         }
 
-        const hashedPassword = await bcrypt.hash(data.password, 10);
+        const hashedPassword = await bcrypt.hash(data.password, config.bcrypt.saltRounds);
 
         const user = await prisma.user.create({
             data: {
@@ -74,9 +77,13 @@ export class AuthService {
             },
         });
 
+        // Clear user list cache
+        await RedisCacheService.delPattern('auth:users:*');
+
         return user;
     }
 
+    // ============ LOGIN ============
     static async login(data: LoginInput, ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
         const user = await prisma.user.findUnique({
             where: { email: data.email },
@@ -114,11 +121,11 @@ export class AuthService {
             throw new Error('Account is inactive. Please contact support.');
         }
 
-        // Fix: Use proper JWT sign options
+        // Generate tokens - FIXED: Use proper SignOptions type
         const accessToken = jwt.sign(
             { id: user.id, email: user.email, role: user.role },
             config.jwt.secret,
-            { expiresIn: '15m' } as jwt.SignOptions
+            { expiresIn: config.jwt.accessTokenExpiresIn as jwt.SignOptions['expiresIn'] }
         );
 
         const refreshToken = crypto.randomBytes(40).toString('hex');
@@ -144,10 +151,13 @@ export class AuthService {
             },
         });
 
+        // Cache user profile briefly
+        await RedisCacheService.setFast(`auth:profile:${user.id}`, user, 300);
+
         return {
             accessToken,
             refreshToken,
-            expiresIn: '15m',
+            expiresIn: config.jwt.accessTokenExpiresIn,
             user: {
                 id: user.id,
                 name: user.name,
@@ -167,6 +177,7 @@ export class AuthService {
         };
     }
 
+    // ============ REFRESH TOKEN ============
     static async refreshToken(refreshToken: string): Promise<TokenResponse> {
         const token = await prisma.refreshToken.findFirst({
             where: {
@@ -181,19 +192,40 @@ export class AuthService {
             throw new Error('Invalid or expired refresh token');
         }
 
-        // Fix: Use proper JWT sign options
+        // FIXED: Use proper SignOptions type
         const newAccessToken = jwt.sign(
             { id: token.user.id, email: token.user.email, role: token.user.role },
             config.jwt.secret,
-            { expiresIn: '15m' } as jwt.SignOptions
+            { expiresIn: config.jwt.accessTokenExpiresIn as jwt.SignOptions['expiresIn'] }
         );
+
+        // Optionally rotate refresh token (for better security)
+        const newRefreshToken = crypto.randomBytes(40).toString('hex');
+        const newRefreshTokenExpiry = new Date();
+        newRefreshTokenExpiry.setDate(newRefreshTokenExpiry.getDate() + 7);
+
+        await prisma.$transaction([
+            prisma.refreshToken.update({
+                where: { id: token.id },
+                data: { revoked: true },
+            }),
+            prisma.refreshToken.create({
+                data: {
+                    token: newRefreshToken,
+                    userId: token.user.id,
+                    expiresAt: newRefreshTokenExpiry,
+                },
+            }),
+        ]);
 
         return {
             accessToken: newAccessToken,
-            expiresIn: '15m',
+            refreshToken: newRefreshToken,
+            expiresIn: config.jwt.accessTokenExpiresIn,
         };
     }
 
+    // ============ LOGOUT ============
     static async logout(userId: number, refreshToken?: string): Promise<MessageResponse> {
         if (refreshToken) {
             await prisma.refreshToken.updateMany({
@@ -211,21 +243,29 @@ export class AuthService {
             },
         });
 
+        // Clear user cache
+        await RedisCacheService.del(`auth:profile:${userId}`);
+
         return { message: 'Logged out successfully' };
     }
 
+    // ============ LOGOUT ALL DEVICES ============
     static async logoutAll(userId: number): Promise<MessageResponse> {
         await prisma.refreshToken.updateMany({
             where: { userId: userId, revoked: false },
             data: { revoked: true },
         });
 
+        await RedisCacheService.del(`auth:profile:${userId}`);
+
         return { message: 'Logged out from all devices' };
     }
 
+    // ============ CHANGE PASSWORD ============
     static async changePassword(userId: number, data: ChangePasswordInput): Promise<MessageResponse> {
         const user = await prisma.user.findUnique({
             where: { id: userId },
+            select: { password: true }
         });
 
         if (!user) {
@@ -237,13 +277,14 @@ export class AuthService {
             throw new Error('Current password is incorrect');
         }
 
-        const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+        const hashedPassword = await bcrypt.hash(data.newPassword, config.bcrypt.saltRounds);
 
         await prisma.user.update({
             where: { id: userId },
             data: { password: hashedPassword },
         });
 
+        // Revoke all refresh tokens for security
         await prisma.refreshToken.updateMany({
             where: { userId: userId, revoked: false },
             data: { revoked: true },
@@ -258,12 +299,17 @@ export class AuthService {
             },
         });
 
+        // Clear user cache
+        await RedisCacheService.del(`auth:profile:${userId}`);
+
         return { message: 'Password changed successfully' };
     }
 
+    // ============ FORGOT PASSWORD ============
     static async forgotPassword(email: string, ipAddress?: string): Promise<MessageResponse> {
         const user = await prisma.user.findUnique({
             where: { email },
+            select: { id: true, email: true }
         });
 
         if (user) {
@@ -280,12 +326,15 @@ export class AuthService {
                 },
             });
 
+            // In production, send email here
             console.log(`Password reset token for ${email}: ${resetToken}`);
+            console.log(`Reset link: ${config.appUrl}/reset-password?token=${resetToken}`);
         }
 
         return { message: 'If email exists, reset link will be sent' };
     }
 
+    // ============ RESET PASSWORD ============
     static async resetPassword(token: string, newPassword: string, ipAddress?: string): Promise<MessageResponse> {
         const resetToken = await prisma.passwordResetToken.findFirst({
             where: {
@@ -301,13 +350,14 @@ export class AuthService {
 
         const user = await prisma.user.findUnique({
             where: { email: resetToken.email },
+            select: { id: true }
         });
 
         if (!user) {
             throw new Error('User not found');
         }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const hashedPassword = await bcrypt.hash(newPassword, config.bcrypt.saltRounds);
 
         await prisma.$transaction([
             prisma.user.update({
@@ -334,10 +384,22 @@ export class AuthService {
             },
         });
 
+        // Clear user cache
+        await RedisCacheService.del(`auth:profile:${user.id}`);
+
         return { message: 'Password reset successfully' };
     }
 
+    // ============ GET PROFILE WITH CACHE ============
     static async getProfile(userId: number): Promise<any> {
+        const cacheKey = `auth:profile:${userId}`;
+
+        // Try cache
+        const cached = await RedisCacheService.getFast<any>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: {
@@ -346,10 +408,23 @@ export class AuthService {
                         produce: {
                             take: 5,
                             orderBy: { createdAt: 'desc' },
+                            select: {
+                                id: true,
+                                name: true,
+                                price: true,
+                                category: true,
+                                availableQuantity: true,
+                            }
                         },
                         rentalSpaces: {
                             where: { availability: true },
                             take: 5,
+                            select: {
+                                id: true,
+                                location: true,
+                                size: true,
+                                price: true,
+                            }
                         },
                         sustainabilityCert: true,
                     },
@@ -359,22 +434,40 @@ export class AuthService {
                     orderBy: { orderDate: 'desc' },
                     include: {
                         produce: {
-                            select: { name: true },
+                            select: { name: true, price: true }
                         },
                     },
                 },
                 communityPosts: {
                     take: 5,
                     orderBy: { postDate: 'desc' },
+                    select: {
+                        id: true,
+                        postContent: true,
+                        postDate: true,
+                    }
                 },
                 plantTrackings: {
                     take: 5,
                     orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        plantName: true,
+                        healthStatus: true,
+                        growthStage: true,
+                    }
                 },
                 notifications: {
                     where: { isRead: false },
                     take: 10,
                     orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        title: true,
+                        message: true,
+                        type: true,
+                        createdAt: true,
+                    }
                 },
             },
         });
@@ -383,9 +476,13 @@ export class AuthService {
             throw new Error('User not found');
         }
 
+        // Cache for 5 minutes
+        await RedisCacheService.setFast(cacheKey, user, 300);
+
         return user;
     }
 
+    // ============ UPDATE PROFILE ============
     static async updateProfile(userId: number, data: UpdateProfileInput) {
         const updateData: any = {};
         if (data.name !== undefined) updateData.name = data.name;
@@ -407,14 +504,22 @@ export class AuthService {
             },
         });
 
+        // Clear user cache
+        await RedisCacheService.del(`auth:profile:${userId}`);
+
         return user;
     }
 
-    static async getAllUsers(page: number = 1, limit: number = 10, filters?: {
-        role?: string;
-        status?: string;
-        search?: string;
-    }): Promise<PaginatedUsersResponse> {
+    // ============ GET ALL USERS WITH PAGINATION ============
+    static async getAllUsers(page: number = 1, limit: number = 10, filters?: UserFilters): Promise<PaginatedUsersResponse> {
+        const cacheKey = `auth:users:${page}:${limit}:${JSON.stringify(filters)}`;
+
+        // Try cache
+        const cached = await RedisCacheService.getFast<PaginatedUsersResponse>(cacheKey);
+        if (cached) {
+            return cached;
+        }
+
         const skip = (page - 1) * limit;
         const where: any = {};
 
@@ -453,9 +558,27 @@ export class AuthService {
             prisma.user.count({ where }),
         ]);
 
-        return { users, total, page, limit, totalPages: Math.ceil(total / limit) };
+        const totalPages = Math.ceil(total / limit);
+
+        const response: PaginatedUsersResponse = {
+            users,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            }
+        };
+
+        // Cache for 2 minutes
+        await RedisCacheService.setFast(cacheKey, response, 120);
+
+        return response;
     }
 
+    // ============ UPDATE USER STATUS ============
     static async updateUserStatus(userId: number, status: UserStatus, adminId: number) {
         const user = await prisma.user.update({
             where: { id: userId },
@@ -472,14 +595,30 @@ export class AuthService {
             },
         });
 
+        // Clear caches
+        await Promise.all([
+            RedisCacheService.del(`auth:profile:${userId}`),
+            RedisCacheService.delPattern('auth:users:*'),
+        ]);
+
         return user;
     }
 
+    // ============ DELETE USER ============
     static async deleteUser(userId: number, adminId: number): Promise<MessageResponse> {
         await prisma.user.update({
             where: { id: userId },
-            data: { status: UserStatus.INACTIVE },
+            data: {
+                status: UserStatus.INACTIVE,
+                deletedAt: new Date()
+            },
         });
+
+        // Clear caches
+        await Promise.all([
+            RedisCacheService.del(`auth:profile:${userId}`),
+            RedisCacheService.delPattern('auth:users:*'),
+        ]);
 
         return { message: 'User deleted successfully' };
     }

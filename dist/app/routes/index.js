@@ -8,6 +8,7 @@ const vendor_routes_1 = require("../modules/vendor/vendor.routes");
 const plant_routes_1 = require("../modules/plant/plant.routes");
 const rental_routes_1 = require("../modules/rental/rental.routes");
 const marketplace_routes_1 = require("../modules/marketplace/marketplace.routes");
+const benchmark_routes_1 = require("../modules/benchmark/benchmark.routes");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     { path: '/auth', route: auth_route_1.authRoutes },
@@ -17,6 +18,7 @@ const moduleRoutes = [
     { path: '/rental', route: rental_routes_1.rentalRoutes },
     { path: '/plants', route: plant_routes_1.plantRoutes },
     { path: '/marketplace', route: marketplace_routes_1.marketplaceRoutes },
+    { path: '/benchmark', route: benchmark_routes_1.benchmarkRoutes }
 ];
 moduleRoutes.forEach((route) => {
     router.use(route.path, route.route);

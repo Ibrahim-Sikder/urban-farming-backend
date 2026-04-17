@@ -15,6 +15,9 @@ class RentalController {
                 minPrice: req.query.minPrice ? parseFloat(req.query.minPrice) : undefined,
                 maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice) : undefined,
                 availability: req.query.availability === 'true',
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                searchTerm: req.query.searchTerm,
             };
             const result = await rental_service_1.RentalService.searchRentalSpaces(filters);
             response_1.ResponseHandler.success(res, result, 'Rental spaces fetched successfully');
@@ -44,7 +47,14 @@ class RentalController {
     }
     static async getUserBookings(req, res) {
         try {
-            const bookings = await rental_service_1.RentalService.getUserBookings(req.user.id);
+            const filters = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 10,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                status: req.query.status,
+            };
+            const bookings = await rental_service_1.RentalService.getUserBookings(req.user.id, filters);
             response_1.ResponseHandler.success(res, bookings, 'Bookings fetched successfully');
         }
         catch (error) {

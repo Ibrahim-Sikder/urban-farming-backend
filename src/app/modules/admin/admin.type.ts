@@ -1,5 +1,5 @@
-// modules/admin/admin.type.ts
 import { UserStatus, Role, CertificationStatus, OrderStatus } from '@prisma/client';
+import { PaginationParams, DateRangeFilter } from '../../shared/types/common.types';
 
 // ============ INPUT TYPES ============
 export interface UpdateUserStatusInput {
@@ -19,22 +19,28 @@ export interface VerifyCertificationInput {
     verificationNotes?: string;
 }
 
-// Remove ApproveRentalSpaceInput since no isApproved field
-// export interface ApproveRentalSpaceInput {
-//     spaceId: number;
-//     isApproved: boolean;
-//     rejectionReason?: string;
-// }
+export interface DashboardFilters extends DateRangeFilter { }
 
-export interface ModeratePostInput {
-    postId: number;
-    isApproved: boolean;
-    rejectionReason?: string;
+export interface UserQueryParams extends PaginationParams {
+    role?: Role;
+    status?: UserStatus;
+    search?: string;
 }
 
-export interface DashboardFilters {
-    startDate?: Date;
-    endDate?: Date;
+export interface VendorQueryParams extends PaginationParams {
+    certificationStatus?: CertificationStatus;
+    search?: string;
+}
+
+export interface CertificationQueryParams extends PaginationParams {
+    verificationStatus?: CertificationStatus;
+    vendorId?: number;
+}
+
+export interface OrderQueryParams extends PaginationParams {
+    status?: OrderStatus;
+    minAmount?: number;
+    maxAmount?: number;
 }
 
 // ============ RESPONSE TYPES ============
@@ -94,3 +100,6 @@ export interface CertificationListResponse {
     };
     createdAt: Date;
 }
+
+// Re-export common paginated response
+export { PaginatedResponse } from '../../shared/types/common.types';

@@ -9,11 +9,40 @@ class NotificationController {
             const query = {
                 page: req.query.page ? parseInt(req.query.page) : 1,
                 limit: req.query.limit ? parseInt(req.query.limit) : 20,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
                 isRead: req.query.isRead === 'true' ? true : req.query.isRead === 'false' ? false : undefined,
                 type: req.query.type,
             };
             const result = await notification_service_1.NotificationService.getUserNotifications(req.user.id, query);
             response_1.ResponseHandler.success(res, result, 'Notifications fetched successfully');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 400);
+        }
+    }
+    static async getRecentNotifications(req, res) {
+        try {
+            const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+            const notifications = await notification_service_1.NotificationService.getRecentNotifications(req.user.id, limit);
+            response_1.ResponseHandler.success(res, notifications, 'Recent notifications fetched successfully');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 400);
+        }
+    }
+    static async getNotificationsByType(req, res) {
+        try {
+            const type = req.params.type;
+            const query = {
+                page: req.query.page ? parseInt(req.query.page) : 1,
+                limit: req.query.limit ? parseInt(req.query.limit) : 20,
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder || 'desc',
+                isRead: req.query.isRead === 'true' ? true : req.query.isRead === 'false' ? false : undefined,
+            };
+            const result = await notification_service_1.NotificationService.getNotificationsByType(req.user.id, type, query);
+            response_1.ResponseHandler.success(res, result, `${type} notifications fetched successfully`);
         }
         catch (error) {
             response_1.ResponseHandler.error(res, error.message, 400);
@@ -61,6 +90,15 @@ class NotificationController {
         try {
             const result = await notification_service_1.NotificationService.getUnreadCount(req.user.id);
             response_1.ResponseHandler.success(res, result, 'Unread count fetched successfully');
+        }
+        catch (error) {
+            response_1.ResponseHandler.error(res, error.message, 400);
+        }
+    }
+    static async getNotificationStats(req, res) {
+        try {
+            const stats = await notification_service_1.NotificationService.getNotificationStats(req.user.id);
+            response_1.ResponseHandler.success(res, stats, 'Notification statistics fetched successfully');
         }
         catch (error) {
             response_1.ResponseHandler.error(res, error.message, 400);

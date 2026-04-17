@@ -1,0 +1,26 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.benchmarkRoutes = void 0;
+const express_1 = require("express");
+const benchmark_controller_1 = require("./benchmark.controller");
+const auth_1 = require("../../shared/middleware/auth");
+const rate_limit_middleware_1 = require("../../shared/middleware/rate-limit.middleware");
+const validation_middleware_1 = require("../../shared/middleware/validation.middleware");
+const benchmark_validation_1 = require("./benchmark.validation");
+const router = (0, express_1.Router)();
+router.use(auth_1.authenticate);
+router.use((0, auth_1.authorize)('ADMIN'));
+router.post('/create-plant', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 5 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runCreateBenchmark);
+router.post('/read-plants', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 5 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runReadBenchmark);
+router.post('/update-plant', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 5 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runUpdateBenchmark);
+router.post('/delete-plant', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 5 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runDeleteBenchmark);
+router.post('/create-order', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 5 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runOrderBenchmark);
+router.post('/get-products', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 5 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runProductBenchmark);
+router.post('/create-post', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 5 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runPostBenchmark);
+router.post('/concurrent', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 3 }), (0, validation_middleware_1.validate)(benchmark_validation_1.runBenchmarkSchema), benchmark_controller_1.BenchmarkController.runConcurrentBenchmark);
+router.post('/full', (0, rate_limit_middleware_1.rateLimit)({ windowMs: 60 * 1000, max: 2 }), benchmark_controller_1.BenchmarkController.runFullBenchmark);
+router.get('/report', benchmark_controller_1.BenchmarkController.getBenchmarkReport);
+router.get('/history', (0, validation_middleware_1.validate)(benchmark_validation_1.getBenchmarkHistorySchema), benchmark_controller_1.BenchmarkController.getBenchmarkHistory);
+router.delete('/cleanup', benchmark_controller_1.BenchmarkController.cleanupBenchmarkData);
+exports.benchmarkRoutes = router;
+//# sourceMappingURL=benchmark.routes.js.map
