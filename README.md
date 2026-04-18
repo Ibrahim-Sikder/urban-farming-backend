@@ -5,13 +5,7 @@
 
 ---
 
-##  What This Project Solves
-
-Urban users struggle with:
-- ❌ No access to farming space  
-- ❌ Hard to find verified organic food  
-- ❌ No plant tracking system  
-- ❌ No farmer-user connection  
+##  What This Project Solves 
 
 ###  Solution
 
