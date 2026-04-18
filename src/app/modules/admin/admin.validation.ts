@@ -1,4 +1,3 @@
-// modules/admin/admin.validation.ts
 import { z } from 'zod';
 
 export const updateUserStatusSchema = z.object({

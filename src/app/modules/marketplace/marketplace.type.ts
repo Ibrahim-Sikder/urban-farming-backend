@@ -1,7 +1,6 @@
 import { OrderStatus, CertificationStatus } from '@prisma/client';
 import { PaginationParams, PriceRangeFilter } from '../../shared/types/common.types';
 
-// ============ INPUT TYPES ============
 export interface CreateProduceInput {
     name: string;
     description: string;
@@ -51,7 +50,6 @@ export interface CartItemInput {
     quantity: number;
 }
 
-// ============ RESPONSE TYPES ============
 export interface ProduceResponse {
     id: number;
     name: string;
@@ -107,6 +105,4 @@ export interface OrderResponse {
         };
     };
 }
-
-// Re-export common paginated response
 export { PaginatedResponse } from '../../shared/types/common.types';

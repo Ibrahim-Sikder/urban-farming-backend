@@ -1,7 +1,6 @@
 import { UserStatus, Role, CertificationStatus, OrderStatus } from '@prisma/client';
 import { PaginationParams, DateRangeFilter } from '../../shared/types/common.types';
 
-// ============ INPUT TYPES ============
 export interface UpdateUserStatusInput {
     userId: number;
     status: UserStatus;
@@ -42,8 +41,6 @@ export interface OrderQueryParams extends PaginationParams {
     minAmount?: number;
     maxAmount?: number;
 }
-
-// ============ RESPONSE TYPES ============
 export interface DashboardStatsResponse {
     totalUsers: number;
     totalVendors: number;
@@ -101,5 +98,4 @@ export interface CertificationListResponse {
     createdAt: Date;
 }
 
-// Re-export common paginated response
 export { PaginatedResponse } from '../../shared/types/common.types';

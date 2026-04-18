@@ -15,7 +15,6 @@ const requestCounts = new Map<string, RateLimitRecord>();
 
 export const rateLimit = (options: RateLimitOptions) => {
     return (req: Request, res: Response, next: NextFunction) => {
-        // Get client IP with proper type handling
         let key: string;
         const xForwardedFor = req.headers['x-forwarded-for'];
 
@@ -34,19 +33,16 @@ export const rateLimit = (options: RateLimitOptions) => {
 
         if (record) {
             if (now > record.resetTime) {
-                // Reset window
                 requestCounts.set(key, {
                     count: 1,
                     resetTime: now + options.windowMs,
                 });
                 next();
             } else if (record.count < options.max) {
-                // Increment count
                 record.count++;
                 requestCounts.set(key, record);
                 next();
             } else {
-                // Rate limit exceeded
                 ResponseHandler.error(
                     res,
                     'Too many requests, please try again later.',
@@ -54,7 +50,6 @@ export const rateLimit = (options: RateLimitOptions) => {
                 );
             }
         } else {
-            // First request
             requestCounts.set(key, {
                 count: 1,
                 resetTime: now + options.windowMs,

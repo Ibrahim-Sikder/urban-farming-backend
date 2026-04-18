@@ -19,7 +19,6 @@ const globalErrorHandler = (
     let statusCode = err.statusCode || 500;
     let message = err.message || 'Internal Server Error';
 
-    // Prisma specific errors
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
         switch (err.code) {
             case 'P2002':
@@ -45,7 +44,7 @@ const globalErrorHandler = (
         message = 'Invalid data provided';
     }
 
-    // JWT errors
+
     if (err.name === 'JsonWebTokenError') {
         statusCode = 401;
         message = 'Invalid token';
@@ -56,7 +55,6 @@ const globalErrorHandler = (
         message = 'Token expired';
     }
 
-    // Send response
     res.status(statusCode).json({
         success: false,
         message,

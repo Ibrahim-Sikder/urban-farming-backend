@@ -12,7 +12,6 @@ import { swaggerSpec } from './app/docs/swagger';
 
 const app: Application = express();
 
-// Middleware
 app.use(helmet());
 app.use(cors({ origin: config.cors.origin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
@@ -22,12 +21,10 @@ app.use(globalLimiter);
 
 app.use('/api-docs', swaggerServe, swaggerSetup);
 
-// Alternative JSON endpoint
 app.get('/api-docs.json', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpec);
 });
-// Health check
 app.get('/', (req: Request, res: Response) => {
     res.json({
         status: 'success',
@@ -37,10 +34,8 @@ app.get('/', (req: Request, res: Response) => {
     });
 });
 
-// API Routes
 app.use('/api/v1', router);
 
-// Error handling
 app.use(notFound);
 app.use(globalErrorHandler);
 

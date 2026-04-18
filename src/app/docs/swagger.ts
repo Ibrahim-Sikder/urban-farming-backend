@@ -46,7 +46,6 @@ const options: swaggerJsdoc.Options = {
         },
       },
       schemas: {
-        // ============ COMMON RESPONSES ============
         SuccessResponse: {
           type: 'object',
           properties: {
@@ -120,7 +119,7 @@ const options: swaggerJsdoc.Options = {
           },
         },
 
-        // ============ VENDOR SCHEMAS ============
+
         VendorProfile: {
           type: 'object',
           properties: {

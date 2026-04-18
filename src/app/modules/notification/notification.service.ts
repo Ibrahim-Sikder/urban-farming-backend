@@ -3,51 +3,37 @@ import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
 import { PrismaQueryBuilder } from '../../shared/utils/prisma-query-builder';
 import {
+    BulkOperationResponse,
     GetNotificationsQuery,
-    MarkAsReadInput,
-    MarkAllAsReadInput,
+    MessageResponse,
     NotificationResponse,
     PaginatedNotificationsResponse,
-    UnreadCountResponse,
-    BulkOperationResponse,
-    MessageResponse
+    UnreadCountResponse
 } from './notification.type';
 
 export class NotificationService {
-
-    // ============ GET USER NOTIFICATIONS WITH QUERY BUILDER ============
     static async getUserNotifications(
         userId: number,
         query: GetNotificationsQuery
     ): Promise<PaginatedNotificationsResponse> {
         const cacheKey = `notifications:user:${userId}:${JSON.stringify(query)}`;
-
-        // Try cache
         const cached = await RedisCacheService.getFast<PaginatedNotificationsResponse>(cacheKey);
         if (cached) {
             return cached;
         }
 
-        // Build query using reusable query builder
         const queryBuilder = new PrismaQueryBuilder('Notification', query as any);
-
-        // Add user filter
         const userCondition = Prisma.sql`"userId" = ${userId}`;
         queryBuilder.addCustomCondition(userCondition);
-
-        // Add read status filter
         if (query.isRead !== undefined) {
             const readCondition = Prisma.sql`"isRead" = ${query.isRead}`;
             queryBuilder.addCustomCondition(readCondition);
         }
 
-        // Add type filter
         if (query.type) {
             const typeCondition = Prisma.sql`type = ${query.type}`;
             queryBuilder.addCustomCondition(typeCondition);
         }
-
-        // Custom query
         const customQuery = Prisma.sql`
             SELECT 
                 id,
@@ -62,8 +48,6 @@ export class NotificationService {
         `;
 
         const result = await queryBuilder.execute<NotificationResponse>(customQuery);
-
-        // Get unread count
         const unreadCount = await prisma.$queryRaw<{ count: number }[]>`
             SELECT COUNT(*) as count
             FROM "Notification"
@@ -75,14 +59,11 @@ export class NotificationService {
             meta: result.meta,
             unreadCount: Number(unreadCount[0]?.count) || 0,
         };
-
-        // Cache for 1 minute (notifications change frequently)
         await RedisCacheService.setFast(cacheKey, response, 60);
 
         return response;
     }
 
-    // ============ MARK NOTIFICATIONS AS READ ============
     static async markAsRead(userId: number, notificationIds: number[]): Promise<BulkOperationResponse> {
         const result = await prisma.$executeRaw`
             UPDATE "Notification"
@@ -91,11 +72,8 @@ export class NotificationService {
             AND "userId" = ${userId}
             AND "isRead" = false
         `;
-
-        // Clear cache for this user
         await RedisCacheService.delPattern(`notifications:user:${userId}:*`);
 
-        // Clear unread count cache
         await RedisCacheService.del(`notifications:unread:${userId}`);
 
         return {
@@ -104,7 +82,6 @@ export class NotificationService {
         };
     }
 
-    // ============ MARK ALL NOTIFICATIONS AS READ ============
     static async markAllAsRead(userId: number, type?: string): Promise<BulkOperationResponse> {
         let whereClause = `"userId" = ${userId} AND "isRead" = false`;
         if (type) {
@@ -117,7 +94,6 @@ export class NotificationService {
             WHERE ${Prisma.raw(whereClause)}
         `;
 
-        // Clear cache for this user
         await RedisCacheService.delPattern(`notifications:user:${userId}:*`);
         await RedisCacheService.del(`notifications:unread:${userId}`);
 
@@ -127,9 +103,7 @@ export class NotificationService {
         };
     }
 
-    // ============ DELETE SINGLE NOTIFICATION ============
     static async deleteNotification(userId: number, notificationId: number): Promise<MessageResponse> {
-        // Check if notification exists and belongs to user
         const existing = await prisma.$queryRaw<any[]>`
             SELECT id FROM "Notification"
             WHERE id = ${notificationId} AND "userId" = ${userId}
@@ -144,8 +118,6 @@ export class NotificationService {
             DELETE FROM "Notification"
             WHERE id = ${notificationId} AND "userId" = ${userId}
         `;
-
-        // Clear cache
         await Promise.all([
             RedisCacheService.delPattern(`notifications:user:${userId}:*`),
             RedisCacheService.del(`notifications:unread:${userId}`)
@@ -154,7 +126,6 @@ export class NotificationService {
         return { message: 'Notification deleted successfully' };
     }
 
-    // ============ DELETE ALL NOTIFICATIONS ============
     static async deleteAllNotifications(userId: number, type?: string): Promise<BulkOperationResponse> {
         let whereClause = `"userId" = ${userId}`;
         if (type) {
@@ -166,7 +137,6 @@ export class NotificationService {
             WHERE ${Prisma.raw(whereClause)}
         `;
 
-        // Clear cache
         await Promise.all([
             RedisCacheService.delPattern(`notifications:user:${userId}:*`),
             RedisCacheService.del(`notifications:unread:${userId}`)
@@ -178,11 +148,9 @@ export class NotificationService {
         };
     }
 
-    // ============ GET UNREAD COUNT ============
     static async getUnreadCount(userId: number): Promise<UnreadCountResponse> {
         const cacheKey = `notifications:unread:${userId}`;
 
-        // Try cache
         const cached = await RedisCacheService.getFast<UnreadCountResponse>(cacheKey);
         if (cached) {
             return cached;
@@ -197,14 +165,10 @@ export class NotificationService {
         const response: UnreadCountResponse = {
             unreadCount: Number(result[0]?.count) || 0,
         };
-
-        // Cache for 30 seconds (unread count changes frequently)
         await RedisCacheService.setFast(cacheKey, response, 30);
 
         return response;
     }
-
-    // ============ CREATE NOTIFICATION ============
     static async createNotification(
         userId: number,
         title: string,
@@ -217,8 +181,6 @@ export class NotificationService {
             VALUES (${userId}, ${title}, ${message}, ${type}, false, ${metadata || null}, NOW(), NOW())
             RETURNING id, "userId", title, message, type, "isRead", metadata, "createdAt"
         `;
-
-        // Clear cache for this user
         await Promise.all([
             RedisCacheService.delPattern(`notifications:user:${userId}:*`),
             RedisCacheService.del(`notifications:unread:${userId}`)
@@ -227,7 +189,6 @@ export class NotificationService {
         return notification[0];
     }
 
-    // ============ CREATE BULK NOTIFICATIONS ============
     static async createBulkNotifications(
         userIds: number[],
         title: string,
@@ -244,8 +205,6 @@ export class NotificationService {
             `;
             insertedCount++;
         }
-
-        // Clear cache for all affected users
         for (const userId of userIds) {
             await Promise.all([
                 RedisCacheService.delPattern(`notifications:user:${userId}:*`),
@@ -258,8 +217,6 @@ export class NotificationService {
             count: insertedCount,
         };
     }
-
-    // ============ GET NOTIFICATIONS BY TYPE ============
     static async getNotificationsByType(
         userId: number,
         type: string,
@@ -280,7 +237,6 @@ export class NotificationService {
         return result;
     }
 
-    // ============ GET RECENT NOTIFICATIONS ============
     static async getRecentNotifications(
         userId: number,
         limit: number = 10
@@ -313,15 +269,12 @@ export class NotificationService {
         return notifications;
     }
 
-    // ============ CLEAN OLD NOTIFICATIONS ============
     static async cleanOldNotifications(daysOld: number = 30): Promise<BulkOperationResponse> {
         const result = await prisma.$executeRaw`
             DELETE FROM "Notification"
             WHERE "createdAt" < NOW() - INTERVAL '${daysOld} days'
             AND "isRead" = true
         `;
-
-        // Clear all notification caches (broad pattern)
         await RedisCacheService.delPattern('notifications:*');
 
         return {
@@ -330,7 +283,7 @@ export class NotificationService {
         };
     }
 
-    // ============ GET NOTIFICATION STATISTICS ============
+
     static async getNotificationStats(userId: number): Promise<any> {
         const cacheKey = `notifications:stats:${userId}`;
 

@@ -18,8 +18,6 @@ import {
 import { PaginationParams } from '@/app/shared/types/common.types';
 
 export class AdminService {
-
-    // ============ DASHBOARD STATISTICS ============
     static async getDashboardStats(filters?: DashboardFilters): Promise<DashboardStatsResponse> {
         try {
             const cacheKey = `admin:dashboard:${JSON.stringify(filters)}`;
@@ -83,7 +81,6 @@ export class AdminService {
         }
     }
 
-    // ============ USER MANAGEMENT ============
     static async getAllUsers(queryParams: UserQueryParams = {}): Promise<PaginatedResponse<any>> {
         try {
             const cacheKey = `admin:users:${JSON.stringify(queryParams)}`;
@@ -138,7 +135,6 @@ export class AdminService {
                 VALUES (${userId}, 'Account Status Updated', ${`Your account has been ${status.toLowerCase()}`}, 'SYSTEM', false, NOW(), NOW())
             `;
 
-            // Send socket notification
             await socketService.sendNotification(userId, 'Account Status Updated', `Your account has been ${status.toLowerCase()}`, 'SYSTEM');
 
             await Promise.all([
@@ -174,7 +170,6 @@ export class AdminService {
         }
     }
 
-    // ============ VENDOR MANAGEMENT ============
     static async getAllVendors(queryParams: VendorQueryParams = {}): Promise<PaginatedResponse<VendorListResponse>> {
         try {
             const cacheKey = `admin:vendors:${JSON.stringify(queryParams)}`;
@@ -220,7 +215,6 @@ export class AdminService {
         }
     }
 
-    // ============ VERIFY VENDOR (WITH SOCKET) ============
     static async verifyVendor(vendorId: number, status: CertificationStatus, rejectionReason?: string): Promise<any> {
         try {
             const vendor = await prisma.vendorProfile.update({
@@ -238,8 +232,6 @@ export class AdminService {
                 INSERT INTO "Notification" ("userId", title, message, type, "isRead", "createdAt", "updatedAt")
                 VALUES (${vendor.userId}, ${title}, ${message}, 'SYSTEM', false, NOW(), NOW())
             `;
-
-            // Send real-time socket notification to vendor
             await socketService.sendCertificationNotification(vendor.userId, {
                 vendorId: vendor.id,
                 status: status,
@@ -260,7 +252,6 @@ export class AdminService {
         }
     }
 
-    // ============ CERTIFICATION MANAGEMENT ============
     static async getAllCertifications(queryParams: CertificationQueryParams = {}): Promise<PaginatedResponse<CertificationListResponse>> {
         try {
             const cacheKey = `admin:certifications:${JSON.stringify(queryParams)}`;
@@ -302,7 +293,6 @@ export class AdminService {
         }
     }
 
-    // ============ VERIFY CERTIFICATION (WITH SOCKET) ============
     static async verifyCertification(certId: number, status: CertificationStatus, verificationNotes?: string): Promise<any> {
         try {
             await prisma.$executeRaw`
@@ -344,7 +334,6 @@ export class AdminService {
                 VALUES (${vendor[0].userId}, ${title}, ${message}, 'CERTIFICATION', false, NOW(), NOW())
             `;
 
-            // Send real-time socket notification to vendor
             await socketService.sendCertificationNotification(vendor[0].userId, {
                 vendorId: updatedCert.vendorId,
                 status: status,
@@ -365,7 +354,6 @@ export class AdminService {
         }
     }
 
-    // ============ RENTAL SPACE MANAGEMENT ============
     static async getAllRentalSpaces(queryParams: PaginationParams = {}): Promise<PaginatedResponse<any>> {
         try {
             const cacheKey = `admin:rental-spaces:${JSON.stringify(queryParams)}`;
@@ -406,7 +394,6 @@ export class AdminService {
         }
     }
 
-    // ============ ORDER MANAGEMENT ============
     static async getAllOrders(queryParams: OrderQueryParams = {}): Promise<PaginatedResponse<any>> {
         try {
             const cacheKey = `admin:orders:${JSON.stringify(queryParams)}`;

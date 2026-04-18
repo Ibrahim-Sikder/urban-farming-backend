@@ -57,7 +57,6 @@ class SocketService {
             pingInterval: 25000
         });
 
-        // Authentication middleware
         this.io.use(async (socket, next) => {
             try {
                 const token = socket.handshake.auth.token;
@@ -77,7 +76,6 @@ class SocketService {
             this.handleConnection(socket);
         });
 
-        console.log('✅ Socket.IO server initialized');
     }
 
     private handleConnection(socket: Socket) {
@@ -128,13 +126,11 @@ class SocketService {
             console.log(`❌ User ${userId} (${role}) disconnected | Total connected: ${this.connectedUsers.size}`);
         });
 
-        // Handle errors
         socket.on('error', (error) => {
             console.error(`Socket error for user ${userId}:`, error);
         });
     }
 
-    // ============ PUBLIC METHODS FOR SERVICES ============
 
     // Send notification to specific user
     async sendToUser(userId: number, event: string, data: any): Promise<boolean> {
@@ -164,17 +160,13 @@ class SocketService {
         }
     }
 
-    // Check if user is connected
     isUserConnected(userId: number): boolean {
         return this.connectedUsers.has(userId);
     }
 
-    // Get connected users count
     getConnectedUsersCount(): number {
         return this.connectedUsers.size;
     }
-
-    // Close socket server
     async close(): Promise<void> {
         if (this.io) {
             await this.io.close();
@@ -184,9 +176,7 @@ class SocketService {
         }
     }
 
-    // ============ SPECIFIC EVENT METHODS ============
 
-    // Send order notification to vendor
     async sendOrderNotification(vendorId: number, orderData: OrderNotificationData): Promise<void> {
         await this.sendToUser(vendorId, 'order:new', {
             ...orderData,
@@ -195,7 +185,6 @@ class SocketService {
         });
     }
 
-    // Send order status update to customer
     async sendOrderStatusUpdate(customerId: number, orderId: number, status: string): Promise<void> {
         await this.sendToUser(customerId, 'order:status:updated', {
             orderId,
@@ -205,7 +194,6 @@ class SocketService {
         });
     }
 
-    // Send booking notification to vendor
     async sendBookingNotification(vendorId: number, bookingData: BookingNotificationData): Promise<void> {
         await this.sendToUser(vendorId, 'booking:new', {
             ...bookingData,
@@ -214,7 +202,6 @@ class SocketService {
         });
     }
 
-    // Send booking status update to customer
     async sendBookingStatusUpdate(customerId: number, bookingId: number, status: string): Promise<void> {
         await this.sendToUser(customerId, 'booking:status:updated', {
             bookingId,
@@ -224,7 +211,6 @@ class SocketService {
         });
     }
 
-    // Send plant health update to user
     async sendPlantUpdate(userId: number, plantData: PlantUpdateData): Promise<void> {
         await this.sendToUser(userId, 'plant:health:updated', {
             ...plantData,
@@ -232,7 +218,6 @@ class SocketService {
         });
     }
 
-    // Send plant ready for harvest notification
     async sendPlantReadyForHarvest(userId: number, plantId: number, plantName: string): Promise<void> {
         await this.sendToUser(userId, 'plant:ready:harvest', {
             plantId,
@@ -243,7 +228,6 @@ class SocketService {
         });
     }
 
-    // Send certification notification to vendor
     async sendCertificationNotification(vendorId: number, certData: CertificationNotificationData): Promise<void> {
         await this.sendToUser(vendorId, 'certification:status', {
             ...certData,
@@ -251,8 +235,6 @@ class SocketService {
             timestamp: new Date()
         });
     }
-
-    // Send comment notification to post author
     async sendCommentNotification(postAuthorId: number, postId: number, commenterName: string): Promise<void> {
         await this.sendToUser(postAuthorId, 'comment:new', {
             postId,
@@ -263,7 +245,6 @@ class SocketService {
         });
     }
 
-    // Send general notification
     async sendNotification(userId: number, title: string, message: string, type: string, metadata?: any): Promise<void> {
         await this.sendToUser(userId, 'notification:new', {
             title,

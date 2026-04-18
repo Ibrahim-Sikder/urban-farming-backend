@@ -21,7 +21,7 @@ class RedisConfig {
             });
 
             this.client.on('connect', () => {
-                console.log('✅ Redis connected successfully');
+                console.log(' Redis connected successfully');
             });
 
             this.client.on('error', (error) => {
@@ -29,7 +29,7 @@ class RedisConfig {
             });
 
             this.client.on('ready', () => {
-                console.log('✅ Redis is ready to use');
+                console.log(' Redis is ready to use');
             });
         }
         return this.client;

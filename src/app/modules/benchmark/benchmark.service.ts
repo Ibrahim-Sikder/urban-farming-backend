@@ -17,10 +17,7 @@ export class BenchmarkService {
     private static testPlantIds: number[] = [];
     private static testProductIds: number[] = [];
     private static testPostIds: number[] = [];
-
-    // ============ SETUP TEST DATA ============
     static async setupTestData(): Promise<{ userId: number; vendorId: number }> {
-        // Create test user if not exists
         if (!this.testUserId) {
             const testUser = await prisma.user.create({
                 data: {
@@ -32,8 +29,6 @@ export class BenchmarkService {
                 },
             });
             this.testUserId = testUser.id;
-
-            // Create test vendor
             const testVendor = await prisma.user.create({
                 data: {
                     name: 'Benchmark Vendor',
@@ -53,8 +48,6 @@ export class BenchmarkService {
                 },
             });
             this.testVendorId = vendorProfile.id;
-
-            // Create test products
             const products = [];
             for (let i = 0; i < 50; i++) {
                 const product = await prisma.produce.create({
@@ -74,8 +67,6 @@ export class BenchmarkService {
         }
         return { userId: this.testUserId, vendorId: this.testVendorId };
     }
-
-    // ============ BENCHMARK: CREATE PLANT ============
     static async benchmarkCreatePlant(iterations: number = 100): Promise<BenchmarkResult> {
         await this.setupTestData();
         const times: number[] = [];
@@ -103,19 +94,14 @@ export class BenchmarkService {
         }
 
         const result = this.calculateMetrics('CREATE_PLANT', iterations, times);
-
-        // Clear cache after benchmark
         await RedisCacheService.delPattern(`plants:${this.testUserId}:*`);
 
         return result;
     }
 
-    // ============ BENCHMARK: READ PLANTS ============
     static async benchmarkReadPlants(iterations: number = 100): Promise<BenchmarkResult> {
         await this.setupTestData();
         const times: number[] = [];
-
-        // Ensure we have plants to read
         if (this.testPlantIds.length === 0) {
             await this.benchmarkCreatePlant(10);
         }
@@ -143,8 +129,6 @@ export class BenchmarkService {
 
         return this.calculateMetrics('READ_PLANTS', iterations, times);
     }
-
-    // ============ BENCHMARK: UPDATE PLANT ============
     static async benchmarkUpdatePlant(iterations: number = 100): Promise<BenchmarkResult> {
         await this.setupTestData();
         const times: number[] = [];
@@ -170,19 +154,13 @@ export class BenchmarkService {
                 times.push(Date.now() - start);
             }
         }
-
-        // Clear cache
         await RedisCacheService.delPattern(`plants:${this.testUserId}:*`);
 
         return this.calculateMetrics('UPDATE_PLANT', iterations, times);
     }
-
-    // ============ BENCHMARK: DELETE PLANT ============
     static async benchmarkDeletePlant(iterations: number = 100): Promise<BenchmarkResult> {
         await this.setupTestData();
         const times: number[] = [];
-
-        // Create fresh plants for deletion
         const tempPlantIds: number[] = [];
         for (let i = 0; i < iterations; i++) {
             const plant = await prisma.plantTracking.create({
@@ -213,8 +191,6 @@ export class BenchmarkService {
 
         return this.calculateMetrics('DELETE_PLANT', iterations, times);
     }
-
-    // ============ BENCHMARK: CREATE ORDER ============
     static async benchmarkCreateOrder(iterations: number = 100): Promise<BenchmarkResult> {
         await this.setupTestData();
         const times: number[] = [];
@@ -249,14 +225,10 @@ export class BenchmarkService {
                 times.push(Date.now() - start);
             }
         }
-
-        // Clear cache
         await RedisCacheService.delPattern(`marketplace:orders:${this.testUserId}:*`);
 
         return this.calculateMetrics('CREATE_ORDER', iterations, times);
     }
-
-    // ============ BENCHMARK: GET PRODUCTS WITH PAGINATION ============
     static async benchmarkGetProducts(iterations: number = 100): Promise<BenchmarkResult> {
         await this.setupTestData();
         const times: number[] = [];
@@ -294,8 +266,6 @@ export class BenchmarkService {
 
         return this.calculateMetrics('GET_PRODUCTS', iterations, times);
     }
-
-    // ============ BENCHMARK: CREATE COMMUNITY POST ============
     static async benchmarkCreatePost(iterations: number = 100): Promise<BenchmarkResult> {
         await this.setupTestData();
         const times: number[] = [];
@@ -315,14 +285,10 @@ export class BenchmarkService {
                 times.push(Date.now() - start);
             }
         }
-
-        // Clear cache
         await RedisCacheService.delPattern('community:posts:*');
 
         return this.calculateMetrics('CREATE_POST', iterations, times);
     }
-
-    // ============ BENCHMARK: CONCURRENT OPERATIONS ============
     static async benchmarkConcurrentOperations(
         concurrentUsers: number = 50,
         operationsPerUser: number = 20
@@ -358,7 +324,6 @@ export class BenchmarkService {
                         failedOps++;
                         responseTimes.push(Date.now() - opStart);
                     }
-                    // Small delay to simulate real user behavior
                     await new Promise(resolve => setTimeout(resolve, 10));
                 }
             })();
@@ -369,8 +334,6 @@ export class BenchmarkService {
 
         const totalTimeMs = Date.now() - startTime;
         const totalOps = successfulOps + failedOps;
-
-        // Calculate percentiles
         const sortedTimes = [...responseTimes].sort((a, b) => a - b);
         const p95Index = Math.floor(sortedTimes.length * 0.95);
         const p99Index = Math.floor(sortedTimes.length * 0.99);
@@ -378,8 +341,6 @@ export class BenchmarkService {
         const averageResponseTimeMs = responseTimes.length > 0
             ? responseTimes.reduce((a: number, b: number) => a + b, 0) / responseTimes.length
             : 0;
-
-        // Clear cache
         await RedisCacheService.delPattern(`plants:${this.testUserId}:*`);
 
         return {
@@ -397,40 +358,21 @@ export class BenchmarkService {
         };
     }
 
-    // ============ RUN FULL BENCHMARK ============
     static async runFullBenchmark(): Promise<FullBenchmarkReport> {
         const results: FullBenchmarkReport['results'] = {};
-
-        console.log('🚀 Starting full benchmark...');
-        console.log('📊 This may take a few minutes...\n');
-
-        // Sequential benchmarks
-        console.log('📊 Testing CREATE PLANT...');
         results.createPlant = await this.benchmarkCreatePlant(100);
 
-        console.log('📊 Testing READ PLANTS...');
         results.readPlants = await this.benchmarkReadPlants(100);
 
-        console.log('📊 Testing UPDATE PLANT...');
         results.updatePlant = await this.benchmarkUpdatePlant(100);
-
-        console.log('📊 Testing DELETE PLANT...');
         results.deletePlant = await this.benchmarkDeletePlant(50);
 
-        console.log('📊 Testing CREATE ORDER...');
         results.createOrder = await this.benchmarkCreateOrder(100);
 
-        console.log('📊 Testing GET PRODUCTS...');
         results.getProducts = await this.benchmarkGetProducts(100);
 
-        console.log('📊 Testing CREATE POST...');
+
         results.createPost = await this.benchmarkCreatePost(100);
-
-        // Concurrent benchmark
-        console.log('📊 Testing CONCURRENT OPERATIONS...');
-        results.concurrent = await this.benchmarkConcurrentOperations(30, 15);
-
-        // Find fastest and slowest operations
         let fastestOperation = '';
         let fastestTime = Infinity;
         let slowestOperation = '';
@@ -458,8 +400,6 @@ export class BenchmarkService {
                 }
             }
         }
-
-        // Calculate summary
         const benchmarkResults = operations.filter(o => o.result);
         let totalThroughput = 0;
         let totalResponseTime = 0;
@@ -492,12 +432,9 @@ export class BenchmarkService {
             },
             results,
         };
-
-        // Save report to memory and cache
         this.benchmarkResults.set('latest', report);
         await RedisCacheService.setFast('benchmark:latest', report, 3600);
 
-        // Save to database for history
         await prisma.benchmarkReport.create({
             data: {
                 id: `benchmark_${Date.now()}`,
@@ -505,30 +442,20 @@ export class BenchmarkService {
             },
         });
 
-        console.log('\n✅ Full benchmark completed!');
-        console.log(`📈 Average Throughput: ${avgThroughput.toFixed(2)} ops/sec`);
-        console.log(`⚡ Average Response: ${avgResponse.toFixed(2)}ms`);
-        console.log(`🚀 Fastest: ${fastestOperation} (${fastestTime.toFixed(2)}ms)`);
-        console.log(`🐌 Slowest: ${slowestOperation} (${slowestTime.toFixed(2)}ms)\n`);
-
         return report;
     }
 
-    // ============ GET LATEST BENCHMARK REPORT ============
     static async getBenchmarkReport(): Promise<FullBenchmarkReport | null> {
-        // Try cache first
         const cached = await RedisCacheService.getFast<FullBenchmarkReport>('benchmark:latest');
         if (cached) {
             return cached;
         }
 
-        // Try memory
         const memoryReport = this.benchmarkResults.get('latest');
         if (memoryReport) {
             return memoryReport;
         }
 
-        // Try database for latest
         const latestReport = await prisma.benchmarkReport.findFirst({
             orderBy: { created_at: 'desc' },
         });
@@ -542,7 +469,6 @@ export class BenchmarkService {
         return null;
     }
 
-    // ============ GET BENCHMARK HISTORY ============
     static async getBenchmarkHistory(params: BenchmarkQueryParams = {}): Promise<PaginatedResponse<FullBenchmarkReport>> {
         const page = params.page || 1;
         const limit = Math.min(50, params.limit || 10);
@@ -581,7 +507,6 @@ export class BenchmarkService {
         };
     }
 
-    // ============ CLEANUP TEST DATA ============
     static async cleanupTestData(): Promise<void> {
         if (this.testUserId) {
             await prisma.plantTracking.deleteMany({
@@ -624,15 +549,11 @@ export class BenchmarkService {
         this.testPlantIds = [];
         this.testProductIds = [];
         this.testPostIds = [];
-
-        // Clear benchmark cache
         await RedisCacheService.delPattern('benchmark:*');
         this.benchmarkResults.clear();
 
-        console.log('✅ Benchmark test data cleaned up');
     }
 
-    // ============ HELPER: CALCULATE METRICS ============
     private static calculateMetrics(
         operation: string,
         iterations: number,

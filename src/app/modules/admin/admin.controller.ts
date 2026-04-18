@@ -1,11 +1,8 @@
 import { Request, Response } from 'express';
 import { AdminService } from './admin.service';
 import { ResponseHandler } from '../../shared/utils/response';
-import { AuthRequest } from '../../shared/middleware/auth';
-
 export class AdminController {
 
-    // ============ DASHBOARD ============
     static async getDashboardStats(req: Request, res: Response): Promise<void> {
         try {
             const filters = {
@@ -19,7 +16,7 @@ export class AdminController {
         }
     }
 
-    // ============ USER MANAGEMENT ============
+
     static async getAllUsers(req: Request, res: Response): Promise<void> {
         try {
             const queryParams = {
@@ -58,7 +55,6 @@ export class AdminController {
         }
     }
 
-    // ============ VENDOR MANAGEMENT ============
     static async getAllVendors(req: Request, res: Response): Promise<void> {
         try {
             const queryParams = {
@@ -86,7 +82,6 @@ export class AdminController {
         }
     }
 
-    // ============ CERTIFICATION MANAGEMENT ============
     static async getAllCertifications(req: Request, res: Response): Promise<void> {
         try {
             const queryParams = {
@@ -114,7 +109,6 @@ export class AdminController {
         }
     }
 
-    // ============ RENTAL SPACE MANAGEMENT ============
     static async getAllRentalSpaces(req: Request, res: Response): Promise<void> {
         try {
             const queryParams = {
@@ -131,7 +125,6 @@ export class AdminController {
         }
     }
 
-    // ============ ORDER MANAGEMENT ============
     static async getAllOrders(req: Request, res: Response): Promise<void> {
         try {
             const queryParams = {

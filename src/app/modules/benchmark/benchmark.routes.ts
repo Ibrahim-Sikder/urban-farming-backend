@@ -6,12 +6,8 @@ import { validate } from '../../shared/middleware/validation.middleware';
 import { runBenchmarkSchema, getBenchmarkHistorySchema } from './benchmark.validation';
 
 const router = Router();
-
-// All benchmark routes require admin authentication
 router.use(authenticate);
 router.use(authorize('ADMIN'));
-
-// Individual benchmark endpoints
 router.post(
     '/create-plant',
     rateLimit({ windowMs: 60 * 1000, max: 5 }),
@@ -74,7 +70,6 @@ router.post(
     BenchmarkController.runFullBenchmark
 );
 
-// Report endpoints
 router.get(
     '/report',
     BenchmarkController.getBenchmarkReport
@@ -86,7 +81,6 @@ router.get(
     BenchmarkController.getBenchmarkHistory
 );
 
-// Cleanup
 router.delete(
     '/cleanup',
     BenchmarkController.cleanupBenchmarkData

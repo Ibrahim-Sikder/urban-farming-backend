@@ -115,7 +115,7 @@ export class EmailService {
             await transporter.sendMail(mailOptions);
 
         } catch (error: any) {
-            console.error('❌ Failed to send success email:', error.message);
+            console.error(' Failed to send success email:', error.message);
         }
     }
 }

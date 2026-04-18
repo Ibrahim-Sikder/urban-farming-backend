@@ -1,24 +1,21 @@
-import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
 import socketService from '../../services/socket.service';
-import { CertificationStatus, OrderStatus } from '@prisma/client';
 import {
-    CreateProduceInput,
-    UpdateProduceInput,
     AddToCartInput,
+    CartResponse,
     CreateOrderInput,
-    UpdateOrderStatusInput,
+    CreateProduceInput,
+    OrderResponse,
+    PaginatedResponse,
     ProduceFilters,
     ProduceResponse,
-    CartResponse,
-    OrderResponse,
-    PaginatedResponse
+    UpdateOrderStatusInput,
+    UpdateProduceInput
 } from './marketplace.type';
 
 export class MarketplaceService {
 
-    // ============ PRODUCE MANAGEMENT (VENDOR) ============
 
     static async createProduce(vendorUserId: number, data: CreateProduceInput): Promise<ProduceResponse> {
         const vendor = await prisma.vendorProfile.findUnique({
@@ -139,8 +136,6 @@ export class MarketplaceService {
             updatedAt: updated.updatedAt,
         };
     }
-
-    // ============ PUBLIC PRODUCE ROUTES ============
 
     static async getAllProduce(filters: ProduceFilters = {}): Promise<PaginatedResponse<ProduceResponse>> {
         const cacheKey = `marketplace:produces:${JSON.stringify(filters)}`;
@@ -406,8 +401,6 @@ export class MarketplaceService {
         return { message: 'Produce deleted successfully' };
     }
 
-    // ============ CART MANAGEMENT ============
-
     static async getCart(userId: number): Promise<CartResponse> {
         const cacheKey = `marketplace:cart:${userId}`;
 
@@ -518,8 +511,6 @@ export class MarketplaceService {
         return { items: [], totalItems: 0, totalPrice: 0 };
     }
 
-    // ============ ORDER MANAGEMENT WITH SOCKET ============
-
     static async createOrder(userId: number, data: CreateOrderInput): Promise<OrderResponse> {
         const produce = await prisma.produce.findFirst({
             where: {
@@ -566,13 +557,11 @@ export class MarketplaceService {
             where: { userId, produceId: data.produceId }
         });
 
-        // Get customer info for notification
         const customer = await prisma.user.findUnique({
             where: { id: userId },
             select: { name: true }
         });
 
-        // Send real-time notification to vendor via Socket.IO
         await socketService.sendOrderNotification(produce.vendorId, {
             orderId: order.id,
             customerName: customer?.name || 'Customer',
@@ -582,7 +571,6 @@ export class MarketplaceService {
             timestamp: new Date()
         });
 
-        // Create database notification
         await prisma.notification.create({
             data: {
                 userId: produce.vendorId,
@@ -716,7 +704,6 @@ export class MarketplaceService {
         return response;
     }
 
-    // ============ UPDATE ORDER STATUS (WITH SOCKET) ============
     static async updateOrderStatus(vendorUserId: number, orderId: number, data: UpdateOrderStatusInput): Promise<OrderResponse> {
         const vendor = await prisma.vendorProfile.findUnique({
             where: { userId: vendorUserId },
@@ -748,10 +735,8 @@ export class MarketplaceService {
             }
         });
 
-        // Send real-time notification to customer via Socket.IO
         await socketService.sendOrderStatusUpdate(order.userId, orderId, data.status);
 
-        // Create database notification
         await prisma.notification.create({
             data: {
                 userId: order.userId,

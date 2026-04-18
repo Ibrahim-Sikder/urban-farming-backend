@@ -5,8 +5,6 @@ import { AuthRequest } from '../../shared/middleware/auth';
 
 export class MarketplaceController {
 
-    // ============ PRODUCE CONTROLLERS ============
-
     static async createProduce(req: AuthRequest, res: Response): Promise<void> {
         try {
             const produce = await MarketplaceService.createProduce(req.user!.id, req.body);
@@ -86,8 +84,6 @@ export class MarketplaceController {
         }
     }
 
-    // ============ CART CONTROLLERS ============
-
     static async getCart(req: AuthRequest, res: Response): Promise<void> {
         try {
             const cart = await MarketplaceService.getCart(req.user!.id);
@@ -134,8 +130,6 @@ export class MarketplaceController {
             ResponseHandler.error(res, error.message, 400);
         }
     }
-
-    // ============ ORDER CONTROLLERS ============
 
     static async createOrder(req: AuthRequest, res: Response): Promise<void> {
         try {
