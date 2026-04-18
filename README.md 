@@ -802,3 +802,11 @@ curl http://localhost:5000/
 
 # Access Swagger
 open http://localhost:5000/api-docs
+
+
+Plant Module (/plant)
+Method	Endpoint	Description	Auth
+POST	/plant	Create plant	✅ Customer
+GET	/plant	My plants	✅ Customer
+PATCH	/plant/:id/health	Update health	✅ Customer
+POST	/plant/:id/harvest	Mark harvested	✅ Customer
