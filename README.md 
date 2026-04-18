@@ -1,11 +1,11 @@
-# 🌱 Urban Farming Platform API
+###  Urban Farming Platform API
 
 > **Production-Ready Backend for an Interactive Urban Farming Ecosystem**  
 > Built with scalability, performance, and real-world architecture in mind.
 
 ---
 
-## 🎯 What This Project Solves
+##  What This Project Solves
 
 Urban users struggle with:
 - ❌ No access to farming space  
@@ -13,32 +13,32 @@ Urban users struggle with:
 - ❌ No plant tracking system  
 - ❌ No farmer-user connection  
 
-### ✅ Solution
+###  Solution
 
 A unified platform where users can:
 
-- 🏠 Rent farming spaces  
-- 🛒 Buy & sell organic produce  
-- 🌱 Track plant growth in real-time  
-- 💬 Share knowledge via community  
-- ✅ Verify sustainability certifications  
+-  Rent farming spaces  
+-  Buy & sell organic produce  
+-  Track plant growth in real-time  
+-  Share knowledge via community  
+-  Verify sustainability certifications  
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
-- 🔐 JWT Authentication + Role-based access
-- 🏪 Vendor marketplace & product management
-- 🏠 Farm rental booking system
-- 🌱 Real-time plant tracking (Socket.IO)
-- 💬 Community forum system
-- ✅ Sustainability certification workflow
-- ⚡ Redis caching + rate limiting
-- 📊 Benchmark & performance tracking
+-  JWT Authentication + Role-based access
+-  Vendor marketplace & product management
+-  Farm rental booking system
+-  Real-time plant tracking (Socket.IO)
+-  Community forum system
+-  Sustainability certification workflow
+-  Redis caching + rate limiting
+-  Benchmark & performance tracking
 
 ---
 
-## 🧠 System Design Philosophy
+## System Design Philosophy
 
 This project is built with:
 
@@ -47,11 +47,10 @@ This project is built with:
 - Consistent response structure
 - Production-ready patterns
 
-👉 Not just CRUD — **real backend engineering approach**
 
 ---
 
-## 🛠 Tech Stack
+##  Tech Stack
 
 | Layer        | Technology |
 |-------------|-----------|
@@ -64,11 +63,10 @@ This project is built with:
 
 
 ---
-
-## ⚙️ Quick Start
+##  Quick Start
 
 ```bash
-git clone https://github.com/your-username/urban-farming-backend.git
+git clone https://github.com/Ibrahim-Sikder/urban-farming-backend
 cd urban-farming-backend
 
 npm install
