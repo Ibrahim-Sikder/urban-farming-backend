@@ -1,4 +1,3 @@
-// ============ PAGINATION TYPES ============
 
 export interface PaginationParams {
     page?: number;
@@ -22,8 +21,6 @@ export interface PaginatedResponse<T> {
     meta: PaginationMeta;
 }
 
-// ============ COMMON FILTER TYPES ============
-
 export interface DateRangeFilter {
     startDate?: Date;
     endDate?: Date;
@@ -46,8 +43,6 @@ export interface LocationFilter {
     zipCode?: string;
 }
 
-// ============ API RESPONSE TYPES ============
-
 export interface ApiSuccessResponse<T> {
     success: true;
     data: T;
@@ -63,8 +58,6 @@ export interface ApiErrorResponse {
 }
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
-
-// ============ COMMON ENTITY TYPES ============
 
 export interface TimestampFields {
     createdAt: Date;
@@ -83,8 +76,6 @@ export interface UserInfo {
     profileImage?: string;
 }
 
-// ============ QUERY BUILDER TYPES ============
-
 export interface QueryBuilderConfig {
     searchableFields?: string[];
     sortableFields?: string[];
@@ -95,15 +86,11 @@ export interface QueryBuilderConfig {
     maxLimit?: number;
 }
 
-// ============ CACHE TYPES ============
-
 export interface CacheOptions {
     ttl?: number;
     key?: string;
     compress?: boolean;
 }
-
-// ============ BULK OPERATION TYPES ============
 
 export interface BulkOperationResult {
     success: number;
@@ -121,8 +108,6 @@ export interface IdResponse {
 export interface MessageResponse {
     message: string;
 }
-
-// ============ ENUM HELPERS ============
 
 export type SortOrder = 'asc' | 'desc';
 export type Status = 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'COMPLETED' | 'CANCELLED';

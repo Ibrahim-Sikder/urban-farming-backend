@@ -36,7 +36,6 @@ export class PrismaQueryBuilder<T = any> {
     private sortOrderValue: 'asc' | 'desc' = 'desc';
     private customConditions: Prisma.Sql[] = [];
 
-    // Valid columns with their Prisma field names
     private static readonly VALID_COLUMNS: Record<string, Record<string, string>> = {
         'PlantTracking': {
             'healthStatus': 'healthStatus',
@@ -69,8 +68,6 @@ export class PrismaQueryBuilder<T = any> {
         this.searchTerm = (this.query.searchTerm as string) || '';
         this.sortByField = (this.query.sortBy as string) || 'createdAt';
         this.sortOrderValue = (this.query.sortOrder as 'asc' | 'desc') || 'desc';
-
-        // Extract only valid filters
         const validColumns = PrismaQueryBuilder.VALID_COLUMNS[this.modelName] || {};
         const excludeKeys = ['page', 'limit', 'sortBy', 'sortOrder', 'searchTerm', 'fields'];
 
@@ -84,20 +81,15 @@ export class PrismaQueryBuilder<T = any> {
     private buildWhereClause(): Prisma.Sql {
         const conditions: Prisma.Sql[] = [];
 
-        // Add custom conditions
         if (this.customConditions.length > 0) {
             conditions.push(...this.customConditions);
         }
-
-        // Add search conditions (optimized with ILIKE)
         if (this.searchTerm && this.searchFields.length > 0) {
             const searchConditions = this.searchFields.map(field => {
                 return Prisma.sql`${Prisma.raw(field)}::text ILIKE ${`%${this.searchTerm}%`}`;
             });
             conditions.push(Prisma.sql`(${Prisma.join(searchConditions, ' OR ')})`);
         }
-
-        // Add filter conditions (only for valid columns)
         const validColumns = PrismaQueryBuilder.VALID_COLUMNS[this.modelName] || {};
 
         Object.entries(this.filters).forEach(([key, value]) => {
@@ -144,8 +136,6 @@ export class PrismaQueryBuilder<T = any> {
     async execute<T = any>(customQuery?: Prisma.Sql): Promise<PaginatedResult<T>> {
         const whereClause = this.buildWhereClause();
         const orderByClause = this.buildOrderByClause();
-
-        // Optimized count query - use COUNT(1) instead of COUNT(*)
         const countQuery = Prisma.sql`
             SELECT COUNT(1) as total
             FROM ${Prisma.raw(`"${this.modelName}"`)}
@@ -192,8 +182,6 @@ export class PrismaQueryBuilder<T = any> {
                 OFFSET ${this.offset}
             `;
         }
-
-        // Execute in parallel for better performance
         const [countResult, data] = await Promise.all([
             prisma.$queryRaw<{ total: number }[]>(countQuery),
             prisma.$queryRaw<T[]>(dataQuery)

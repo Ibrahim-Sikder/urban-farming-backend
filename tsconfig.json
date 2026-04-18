@@ -1,27 +1,18 @@
 {
   "compilerOptions": {
-    // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
-    
-    // Environment Settings (Node.js এর জন্য - ESM support)
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022"],
     "types": ["node"],
-    
-    // Module Resolution
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    
-    // Other Outputs
     "sourceMap": true,
     "declaration": false,
     "removeComments": true,
-    
-    // Stricter Typechecking Options (সামান্য শিথিল করে দিচ্ছি error এড়াতে)
     "strict": false,
     "noUncheckedIndexedAccess": false,
     "exactOptionalPropertyTypes": false,
@@ -31,13 +22,9 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "noPropertyAccessFromIndexSignature": false,
-    
-    // Recommended Options
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": false,
-    
-    // Path aliases (baseUrl ছাড়া - কারণ এটি deprecated)
     "paths": {
       "@/*": ["./src/*"],
       "@/app/*": ["./src/app/*"],
