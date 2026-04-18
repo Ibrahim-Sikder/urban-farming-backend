@@ -1,0 +1,4739 @@
+{
+	"info": {
+		"_postman_id": "63a8d1dd-bcab-42da-b43a-c62993b49313",
+		"name": "urban-farming",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "27838892",
+		"_collection_link": "https://warped-robot-331405.postman.co/workspace/urban-farming~eba945df-b658-4fec-a9fe-d73910f41463/collection/27838892-63a8d1dd-bcab-42da-b43a-c62993b49313?action=share&source=collection_link&creator=27838892"
+	},
+	"item": [
+		{
+			"name": "user",
+			"item": [
+				{
+					"name": "dashboard-stats",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/dashboard/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"dashboard",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/orders?page=1&limit=10&status=COMPLETED",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"orders"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "COMPLETED"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get orders details",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/orders/2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"orders",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "rentals",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/rentals?page=1&limit=10&status=PENDING",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"rentals"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "PENDING"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get rentals details",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/rentals?page=1&limit=10&status=PENDING",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"rentals"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "PENDING"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get plants",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/plants?page=1&limit=10&healthStatus=HEALTHY&growthStage=SEEDLING",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"plants"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "healthStatus",
+									"value": "HEALTHY"
+								},
+								{
+									"key": "growthStage",
+									"value": "SEEDLING"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get plants details",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/plants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"plants",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "vendor-login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"vendor.mushroom@example.com\",\n    \"password\": \"Mushroom@123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "customer-login",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"customer@gmail.com\",\n    \"password\": \"Customer@123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "admin-login",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"ibrahimfr4450@gmail.com\",\n    \"password\": \"changePas12@iS\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "vendor-register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Mushroom Kingdom\",\n    \"email\": \"vendor.mushroom@example.com\",\n    \"password\": \"Mushroom@123456\",\n    \"role\": \"VENDOR\",\n    \"phoneNumber\": \"01612345678\",\n    \"address\": \"Industrial Area, Tongi, Gazipur\",\n    \"farmName\": \"Mushroom Kingdom Indoor Farm\",\n    \"farmLocation\": \"Tongi Industrial Zone, Gazipur\",\n    \"documents\": [\n        \"https://example.com/documents/mushroom-license.pdf\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "customer-register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Customer\",\n    \"email\": \"customer@gmail.com\",\n    \"password\": \"Customer@123456\",\n    \"role\": \"CUSTOMER\",\n    \"phoneNumber\": \"01712345678\",\n    \"address\": \"House #12, Road #5, Gulshan, Dhaka-1212\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "admin-register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Ibrahim Sikder\",\n    \"email\": \"ibrahimsikder5033@gmail.com\",\n    \"password\": \"Admin123@\",\n    \"role\": \"ADMIN\",\n    \"phoneNumber\": \"01712345678\",\n    \"address\": \"House #12, Road #5, Gulshan, Dhaka-1212\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentPassword\": \"123456S@i\",\n    \"newPassword\": \"Admin123@\"\n} \n ",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/change-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"change-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "forgot-password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"ibrahimfr4450@gmail.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "reset-password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"e00c2ec69c04cb0580c322f9e12e888f0019adf07888767cebfdca77d2becd5a\",\n    \"newPassword\": \"changePas12@iS\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/reset-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"reset-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout-all",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/logout-all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout-all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refresh-token",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/refresh-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all user",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"8dbd49c84861a18dc46309d24d9466c30e9eb8364dce8b20af8c394fe94d5627dae90fe952fe68b4\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/refresh-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "reset-password",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Ibrahim Sikder Updated\",\n    \"phoneNumber\": \"01987654321\",\n    \"address\": \"New Address: House #50, Road #10, Banani, Dhaka\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-user-status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"ACTIVE\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/users/1/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"users",
+								"1",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"ACTIVE\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/users/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "vendor",
+			"item": [
+				{
+					"name": "vendor profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/vendors/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Vendor Products",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/vendors/produce?page=1&limit=1&category=Vegetables&minPrice=50&maxPrice=200&sortBy=price&sortOrder=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"produce"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "1"
+								},
+								{
+									"key": "category",
+									"value": "Vegetables"
+								},
+								{
+									"key": "minPrice",
+									"value": "50"
+								},
+								{
+									"key": "maxPrice",
+									"value": "200"
+								},
+								{
+									"key": "sortBy",
+									"value": "price"
+								},
+								{
+									"key": "sortOrder",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Vendor Orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/vendors/orders?page=1&limit=10&status=PENDING",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"orders"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "PENDING"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Order Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"COMPLETED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/orders/1/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"orders",
+								"1",
+								"status"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "PENDING",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Vendor Bookings",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/vendors/bookings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Revenue Report",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/vendors/reports/revenue",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"reports",
+								"revenue"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-vendor-order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"COMPLETED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/orders/1/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"orders",
+								"1",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update  vendor produce",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"price\": 130,\n    \"availableQuantity\": 85,\n    \"description\": \"Fresh organic tomatoes - now at discounted price!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/produce/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"produce",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-rental-spaces",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJ2ZW5kb3IuZ3JlZW5mYXJtQGV4YW1wbGUuY29tIiwicm9sZSI6IlZFTkRPUiIsImlhdCI6MTc3NjM3MzgyMiwiZXhwIjoxNzc2Mzc0NzIyfQ.KAVJtjMU3PWEFN-Afcdfrw4uRmDzbebPZJTlIPoyvSM",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Cherry Tomato\",\n    \"price\": 150,\n    \"availableQuantity\": 85\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/rental-spaces/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"rental-spaces",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Rental Space",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Cherry Tomato\",\n    \"price\": 150,\n    \"availableQuantity\": 85\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/rental-spaces/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"rental-spaces",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Cherry Tomato\",\n    \"price\": 150,\n    \"availableQuantity\": 85\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/produce/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"produce",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Rental Space",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"location\": \"Balcony Garden, House #12, Road #5, Gulshan-1, Dhaka-1212\",\n    \"size\": 120,\n    \"price\": 3500\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/rental-spaces",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"rental-spaces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Rental Space",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"price\": 5500,\n    \"availability\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/rental-spaces/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"rental-spaces",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Brinjal (Eggplant)\",\n    \"description\": \"Fresh organic brinjal, perfect for cooking.\",\n    \"price\": 100,\n    \"category\": \"Vegetables\",\n    \"availableQuantity\": 80\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/produce",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"produce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Organic Certification",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"certifyingAgency\": \"USDA Organic\",\n    \"certificationDate\": \"2024-01-15T00:00:00.000Z\",\n    \"expiryDate\": \"2025-01-15T00:00:00.000Z\",\n    \"documentUrl\": \"https://example.com/certificates/usda-cert-2024.pdf\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/certification/submit",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"certification",
+								"submit"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Certification Status",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"certifyingAgency\": \"USDA Organic\",\n    \"certificationDate\": \"2024-01-15T00:00:00.000Z\",\n    \"expiryDate\": \"2025-01-15T00:00:00.000Z\",\n    \"documentUrl\": \"https://example.com/certificates/usda-cert-2024.pdf\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/certification/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"certification",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Vendor Rental Spaces",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"location\": \"Rooftop Garden Zone 1, Dhaka\",\n    \"size\": 25.5,\n    \"price\": 5000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/rental-spaces",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"rental-spaces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-vendor-profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"farmName\": \"Green Harvest Organic Farm\",\n    \"farmLocation\": \"Sector #5, Uttara, Dhaka-1230\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-vendor-profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJ2ZW5kb3IuZ3JlZW5mYXJtQGV4YW1wbGUuY29tIiwicm9sZSI6IlZFTkRPUiIsImlhdCI6MTc3NjM3MzgyMiwiZXhwIjoxNzc2Mzc0NzIyfQ.KAVJtjMU3PWEFN-Afcdfrw4uRmDzbebPZJTlIPoyvSM",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Tomato\",\n    \"description\": \"Fresh, juicy organic tomatoes grown without pesticides. Perfect for salads and cooking.\",\n    \"price\": 120,\n    \"category\": \"Vegetables\",\n    \"availableQuantity\": 100\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendors/produce",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendors",
+								"produce"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "rental",
+			"item": [
+				{
+					"name": "create-rental-bookings",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"spaceId\": 1,\n    \"startDate\": \"2024-02-01T00:00:00.000Z\",\n    \"endDate\": \"2024-02-28T00:00:00.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/bookings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Vendor Bookings",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"spaceId\": 1,\n    \"startDate\": \"2024-02-01T00:00:00.000Z\",\n    \"endDate\": \"2024-02-28T00:00:00.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/vendor/bookings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"vendor",
+								"bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Booking Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"PENDING\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/vendor/bookings/1/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"vendor",
+								"bookings",
+								"1",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "rental-spaces",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"spaceId\": 1,\n    \"startDate\": \"2024-02-01T00:00:00.000Z\",\n    \"endDate\": \"2024-03-31T23:59:59.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/spaces?location=khulna",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"spaces"
+							],
+							"query": [
+								{
+									"key": "minPrice",
+									"value": "2000",
+									"disabled": true
+								},
+								{
+									"key": "maxPrice",
+									"value": "8000",
+									"disabled": true
+								},
+								{
+									"key": "minSize",
+									"value": "150",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": "price",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "asc",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "location",
+									"value": "khulna"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Rental Space by ID",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"spaceId\": 1,\n    \"startDate\": \"2024-02-01T00:00:00.000Z\",\n    \"endDate\": \"2024-03-31T23:59:59.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/spaces/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"spaces",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create-bookings",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"spaceId\": 2,\n    \"startDate\": \"2024-03-01T00:00:00.000Z\",\n    \"endDate\": \"2024-03-15T00:00:00.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/bookings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Booking Details by ID",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"spaceId\": 1,\n    \"startDate\": \"2024-02-01T00:00:00.000Z\",\n    \"endDate\": \"2024-03-31T23:59:59.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/bookings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"bookings",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get my booking",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"spaceId\": 1,\n    \"startDate\": \"2024-02-01T00:00:00.000Z\",\n    \"endDate\": \"2024-03-31T23:59:59.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/bookings?page=1&limit=10&status=PENDING&sortBy=orderDate&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"bookings"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "PENDING"
+								},
+								{
+									"key": "sortBy",
+									"value": "orderDate"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Booking",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Weather conditions not suitable for farming\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rental/bookings/1/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rental",
+								"bookings",
+								"1",
+								"cancel"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "plants",
+			"item": [
+				{
+					"name": "create-plants",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"plantName\": \"Green Chili Plant\",\n    \"plantType\": \"Chili\",\n    \"plantedDate\": \"2024-01-10T00:00:00.000Z\",\n    \"expectedHarvestDate\": \"2024-02-20T00:00:00.000Z\",\n    \"notes\": \"Needs regular watering\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All My Plants",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"plantName\": \"Tomato Plant\",\n    \"plantType\": \"Vegetable\",\n    \"plantedDate\": \"2024-01-15T00:00:00.000Z\",\n    \"expectedHarvestDate\": \"2024-03-15T00:00:00.000Z\",\n    \"notes\": \"Planted in organic soil, gets 6 hours of sunlight daily\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants?sortBy=createdAt",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "healthStatus",
+									"value": "HEALTHY",
+									"disabled": true
+								},
+								{
+									"key": "plantType",
+									"value": "Herbs",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Plant Statistics Dashboard",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"plantName\": \"Tomato Plant\",\n    \"plantType\": \"Vegetable\",\n    \"plantedDate\": \"2024-01-15T00:00:00.000Z\",\n    \"expectedHarvestDate\": \"2024-03-15T00:00:00.000Z\",\n    \"notes\": \"Planted in organic soil, gets 6 hours of sunlight daily\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET PLANT DETAILS",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"plantName\": \"Tomato Plant\",\n    \"plantType\": \"Vegetable\",\n    \"plantedDate\": \"2024-01-15T00:00:00.000Z\",\n    \"expectedHarvestDate\": \"2024-03-15T00:00:00.000Z\",\n    \"notes\": \"Planted in organic soil, gets 6 hours of sunlight daily\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/165",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"165"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UPDATE PLANT",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"plantName\": \"Cherry Tomato Plant\",\n    \"plantType\": \"Vegetable\",\n    \"expectedHarvestDate\": \"2024-03-20T00:00:00.000Z\",\n    \"notes\": \"Planted in organic soil, now showing good growth\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/165",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"165"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UPDATE HEALTH STATUS",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"healthStatus\": \"MODERATE\",\n    \"growthStage\": \"VEGETATIVE\",\n    \"notes\": \"Leaves showing yellow spots, need fertilizer\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"1",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "MARK AS HARVESTED",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"healthStatus\": \"MODERATE\",\n    \"growthStage\": \"VEGETATIVE\",\n    \"notes\": \"Leaves showing yellow spots, need fertilizer\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/1/harvest",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"1",
+								"harvest"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete-plants",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"plantName\": \"Cherry Tomato Plant\",\n    \"plantType\": \"Vegetable\",\n    \"expectedHarvestDate\": \"2024-03-20T00:00:00.000Z\",\n    \"notes\": \"Planted in organic soil, now showing good growth\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-plants",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"healthStatus\": \"HEALTHY\",\n    \"growthStage\": \"VEGETATIVE\",\n    \"notes\": \"Plant is growing well, new leaves appearing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"1",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "harvest",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"healthStatus\": \"HEALTHY\",\n    \"growthStage\": \"VEGETATIVE\",\n    \"notes\": \"Plant is growing well, new leaves appearing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/plants/1/harvest",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"plants",
+								"1",
+								"harvest"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "marketplace",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/marketplace/produces?page=1&limit=1&category=Vegetables&minPrice=50&maxPrice=150&sortBy=price&sortOrder=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"produces"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "1"
+								},
+								{
+									"key": "category",
+									"value": "Vegetables"
+								},
+								{
+									"key": "minPrice",
+									"value": "50"
+								},
+								{
+									"key": "maxPrice",
+									"value": "150"
+								},
+								{
+									"key": "sortBy",
+									"value": "price"
+								},
+								{
+									"key": "sortOrder",
+									"value": "asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/marketplace/cart",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"cart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create-cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"produceId\": 1,\n    \"quantity\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/cart",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"cart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create-orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"produceId\": 1,\n    \"quantity\": 2,\n    \"vendorId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/orders",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"orders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product (Vendor only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Brinjal (Eggplant)\",\n    \"description\": \"Fresh organic brinjal, perfect for cooking.\",\n    \"price\": 100,\n    \"category\": \"Vegetables\",\n    \"availableQuantity\": 80\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/vendor/produces",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"vendor",
+								"produces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Vendor Products",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Carrot\",\n    \"description\": \"Fresh organic carrots grown in nutrient-rich soil\",\n    \"price\": 90,\n    \"category\": \"Vegetables\",\n    \"availableQuantity\": 200\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/vendor/produces",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"vendor",
+								"produces"
+							],
+							"query": [
+								{
+									"key": "age",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"disabled": true
+								},
+								{
+									"key": "category",
+									"value": "Vegetables",
+									"disabled": true
+								},
+								{
+									"key": "minPrice",
+									"value": "50",
+									"disabled": true
+								},
+								{
+									"key": "maxPrice",
+									"value": "150",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": "price",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "asc",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product (Vendor only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Cherry Tomato\",\n    \"price\": 150,\n    \"availableQuantity\": 85\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/vendor/produces/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"vendor",
+								"produces",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product (Vendor only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Organic Cherry Tomato\",\n    \"price\": 150,\n    \"availableQuantity\": 85\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/vendor/produces/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"vendor",
+								"produces",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Order Status (Vendor only)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{vendorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"COMPLETED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/orders/1/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"orders",
+								"1",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get-orders",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"produceId\": 1,\n    \"quantity\": 2,\n    \"vendorId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/orders",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"orders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"produceId\": 1,\n    \"quantity\": 2,\n    \"vendorId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/orders/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"orders",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-marketplace-cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"quantity\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/cart/101",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"cart",
+								"101"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "remove-marketplace-cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"quantity\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/cart/101",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"cart",
+								"101"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "crear-cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"quantity\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/marketplace/cart",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"cart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get-single-marketplace-produces",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/marketplace/produces/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"marketplace",
+								"produces",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "community",
+			"item": [
+				{
+					"name": "create post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/community/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"community",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all posts",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/community/posts#urbanfarming #organic",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"community",
+								"posts"
+							],
+							"query": [
+								{
+									"key": "dateFrom",
+									"value": "2024-01-01T00:00:00.000Z",
+									"disabled": true
+								},
+								{
+									"key": "dateTo",
+									"value": "2024-01-31T23:59:59.000Z",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": "postDate",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"disabled": true
+								},
+								{
+									"key": "userId",
+									"value": "2",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "I've been growing vegetables on my balcony for 1 months. This is my experience with urban farming. ",
+									"disabled": true
+								}
+							],
+							"hash": "urbanfarming #organic"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Comments by Post",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/community/posts/1/comments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"community",
+								"posts",
+								"1",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comment",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/community/comments/2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"community",
+								"comments",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{customerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/community/posts/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"community",
+								"posts",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "benchmark",
+			"item": [
+				{
+					"name": "Create Plant Benchmark",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"iterations\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/create-plant",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"create-plant"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create-post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"iterations\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/create-post",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"create-post"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "concurrent-benchmark",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"concurrentUsers\": 50,\n    \"operationsPerUser\": 20\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/concurrent",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"concurrent"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Run Full Benchmark Suite",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/full",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"full"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update-plant benchmark",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"iterations\": 150\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/update-plant",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"update-plant"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete-plant benchmark",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"iterations\": 50\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/delete-plant",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"delete-plant"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create-order-benchmark",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"iterations\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/create-order",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"create-order"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get-products-benchmark",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"iterations\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/get-products",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"get-products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "read-plants benchmark",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/read-plants",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"read-plants"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Benchmark Report",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/report",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"report"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cleanup Benchmark Data",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/benchmark/cleanup",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"benchmark",
+								"cleanup"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "notification",
+			"item": [
+				{
+					"name": "get-notifications",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications?page=1&limit=10&isRead=false&type=ORDER&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "isRead",
+									"value": "false"
+								},
+								{
+									"key": "type",
+									"value": "ORDER"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get-recent-notifications",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/recent",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"recent"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Notifications by Type",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/type/ORDER",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"type",
+								"ORDER"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Unread Count",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/unread/count",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"unread",
+								"count"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Notification Statistics",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"postContent\": \"Just harvested my first batch of organic tomatoes! So excited about urban farming. Any tips for preserving them?\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Specific Notifications as Read",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"notificationIds\": [1, 2, 3, 5]\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/mark-read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"mark-read"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"ORDER\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/mark-all-read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"mark-all-read"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete-single-notifications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"ORDER\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications/123",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"123"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete All Notifications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"ORDER\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/notifications",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "admin",
+			"item": [
+				{
+					"name": "Dashboard Statistics",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/dashboard/stats?endDate=2024-12-31&startDate=2024-01-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"dashboard",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-31"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/users?role=VENDOR",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "VENDOR"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "Benchmark Vendor",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All vendor",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/vendors?limit=10&page=1&certificationStatus=APPROVED",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"vendors"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "sortBy",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "Benchmark Vendor",
+									"disabled": true
+								},
+								{
+									"key": "certificationStatus",
+									"value": "APPROVED"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Certifications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/certifications?page=1&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"certifications"
+							],
+							"query": [
+								{
+									"key": "sortBy",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "Benchmark Vendor",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "verificationStatus",
+									"value": "PENDING",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Certification",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"APPROVED\",\n    \"verificationNotes\": \"All documents verified successfully\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/certifications/4/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"certifications",
+								"4",
+								"verify"
+							],
+							"query": [
+								{
+									"key": "sortBy",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "Benchmark Vendor",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Rental Spaces",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"APPROVED\",\n    \"verificationNotes\": \"All documents verified successfully\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/rental-spaces?page=1&limit=10&searchTerm=Dhaka",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"rental-spaces"
+							],
+							"query": [
+								{
+									"key": "sortBy",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "Benchmark Vendor",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "searchTerm",
+									"value": "Dhaka"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Orders",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"APPROVED\",\n    \"verificationNotes\": \"All documents verified successfully\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/orders?page=1&limit=10&status=COMPLETED&minAmount=100&maxAmoun",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"orders"
+							],
+							"query": [
+								{
+									"key": "sortBy",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "Benchmark Vendor",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "COMPLETED"
+								},
+								{
+									"key": "minAmount",
+									"value": "100"
+								},
+								{
+									"key": "maxAmoun",
+									"value": null
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "verify-vendor",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"REJECTED\",\n    \"rejectionReason\": \"Invalid certification documents\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/vendors/1/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"vendors",
+								"1",
+								"verify"
+							],
+							"query": [
+								{
+									"key": "sortBy",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": "Benchmark Vendor",
+									"disabled": true
+								},
+								{
+									"key": "certificationStatus",
+									"value": "PENDING",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"SUSPENDED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/users/1/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"1",
+								"status"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "VENDOR",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": null,
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"SUSPENDED\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/users/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"1"
+							],
+							"query": [
+								{
+									"key": "role",
+									"value": "VENDOR",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "searchTerm",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "sortOrder",
+									"value": null,
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": null,
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": ""
+		},
+		{
+			"key": "adminToken",
+			"value": ""
+		},
+		{
+			"key": "vendorToken",
+			"value": ""
+		},
+		{
+			"key": "customerToken",
+			"value": ""
+		}
+	]
+}

@@ -7,8 +7,6 @@ import { globalLimiter } from './app/shared/middleware/rateLimiter';
 import { notFound } from './app/shared/middleware/notFound';
 import router from './app/routes';
 import globalErrorHandler from './app/shared/middleware/globalErrorHandler';
-import { swaggerServe, swaggerSetup } from './app/docs/swaggerUI';
-import { swaggerSpec } from './app/docs/swagger';
 
 const app: Application = express();
 
@@ -19,12 +17,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(globalLimiter);
 
-app.use('/api-docs', swaggerServe, swaggerSetup);
-
-app.get('/api-docs.json', (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.send(swaggerSpec);
-});
 app.get('/', (req: Request, res: Response) => {
     res.json({
         status: 'success',

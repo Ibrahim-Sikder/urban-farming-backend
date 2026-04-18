@@ -1,4 +1,4 @@
-// prisma/seed.ts
+
 import { PrismaClient, Role, UserStatus, CertificationStatus, OrderStatus, HealthStatus, GrowthStage } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
@@ -8,11 +8,10 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Starting seeding...');
+    console.log(' Starting seeding...');
 
     try {
-        // 1. Create Admin
-        console.log('📝 Creating admin...');
+
         const admin = await prisma.user.upsert({
             where: { email: 'admin@urbanfarming.com' },
             update: {},
@@ -26,13 +25,13 @@ async function main() {
                 address: 'Dhaka, Bangladesh'
             }
         });
-        console.log(`✅ Created admin: ${admin.email}`);
+        console.log(` Created admin: ${admin.email}`);
 
         // 2. Create 10 Vendors
         const vendors: { id: number; farmName: string }[] = [];
         const categories = ['Vegetables', 'Fruits', 'Herbs', 'Microgreens', 'Mushrooms'];
 
-        console.log('📝 Creating 10 vendors...');
+        console.log(' Creating 10 vendors...');
         for (let i = 1; i <= 10; i++) {
             const user = await prisma.user.create({
                 data: {
@@ -59,7 +58,6 @@ async function main() {
                 }
             });
 
-            // Sustainability certification (without certificateNumber)
             await prisma.sustainabilityCert.create({
                 data: {
                     vendorId: vendor.id,
@@ -73,7 +71,6 @@ async function main() {
                 }
             });
 
-            // Create 10 rental spaces per vendor (without name, description, etc.)
             for (let j = 1; j <= 10; j++) {
                 await prisma.rentalSpace.create({
                     data: {
@@ -90,7 +87,6 @@ async function main() {
                 });
             }
 
-            // Create 10 products per vendor (100 total)
             for (let k = 1; k <= 10; k++) {
                 const categoryIndex = (k - 1) % categories.length;
                 const category = categories[categoryIndex] || 'Vegetables';
@@ -129,7 +125,6 @@ async function main() {
             });
             customers.push({ id: user.id, address: user.address });
 
-            // Plant tracking (3 each = 60)
             for (let j = 1; j <= 3; j++) {
                 await prisma.plantTracking.create({
                     data: {
@@ -145,7 +140,7 @@ async function main() {
                 });
             }
 
-            // Community posts (2 each = 40) - without title, tags, etc.
+
             for (let j = 1; j <= 2; j++) {
                 await prisma.communityPost.create({
                     data: {
@@ -155,11 +150,9 @@ async function main() {
                 });
             }
 
-            console.log(`✅ Created customer ${i}/20`);
         }
 
-        // 4. Create 50 Orders
-        console.log('📝 Creating 50 orders...');
+
         for (let i = 1; i <= 50; i++) {
             const customer = customers[Math.floor(Math.random() * customers.length)];
             const vendor = vendors[Math.floor(Math.random() * vendors.length)];
@@ -186,8 +179,7 @@ async function main() {
             if (i % 10 === 0) console.log(`   Created ${i}/50 orders`);
         }
 
-        // 5. Create 30 Rental Bookings
-        console.log('📝 Creating 30 rental bookings...');
+
         for (let i = 1; i <= 30; i++) {
             const customer = customers[Math.floor(Math.random() * customers.length)];
             const vendor = vendors[Math.floor(Math.random() * vendors.length)];
@@ -217,8 +209,8 @@ async function main() {
             if (i % 10 === 0) console.log(`   Created ${i}/30 bookings`);
         }
 
-        // Create some comments for community posts
-        console.log('📝 Creating comments for community posts...');
+
+        console.log(' Creating comments for community posts...');
         const posts = await prisma.communityPost.findMany();
         const users = await prisma.user.findMany({ where: { role: Role.CUSTOMER } });
 
@@ -237,7 +229,6 @@ async function main() {
             }
         }
 
-        // Summary
         const userCount = await prisma.user.count();
         const vendorCount = await prisma.vendorProfile.count();
         const productCount = await prisma.produce.count();
@@ -245,18 +236,18 @@ async function main() {
         const postCount = await prisma.communityPost.count();
         const commentCount = await prisma.communityComment.count();
 
-        console.log('\n📊 Seeding Summary:');
-        console.log(`✅ Roles: ADMIN, VENDOR, CUSTOMER (3 roles)`);
-        console.log(`✅ Total Users: ${userCount}`);
-        console.log(`✅ Vendors: ${vendorCount} (10 - as required)`);
-        console.log(`✅ Products: ${productCount} (100 - as required)`);
-        console.log(`✅ Rental Spaces: ${rentalSpaceCount} (100)`);
-        console.log(`✅ Community Posts: ${postCount}`);
-        console.log(`✅ Comments: ${commentCount}`);
-        console.log('\n🎉 Seeding completed successfully!');
+        console.log('\n Seeding Summary:');
+        console.log(` Roles: ADMIN, VENDOR, CUSTOMER (3 roles)`);
+        console.log(` Total Users: ${userCount}`);
+        console.log(` Vendors: ${vendorCount} (10 - as required)`);
+        console.log(` Products: ${productCount} (100 - as required)`);
+        console.log(` Rental Spaces: ${rentalSpaceCount} (100)`);
+        console.log(` Community Posts: ${postCount}`);
+        console.log(` Comments: ${commentCount}`);
+        console.log('\n Seeding completed successfully!');
 
     } catch (error) {
-        console.error('❌ Seeding failed:', error);
+        console.error(' Seeding failed:', error);
         throw error;
     }
 }
