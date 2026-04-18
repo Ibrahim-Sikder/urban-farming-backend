@@ -7,8 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ===================== ENUMS =====================
-
 enum Role {
   ADMIN
   VENDOR
@@ -47,8 +45,6 @@ enum GrowthStage {
   FRUITING
   HARVESTING
 }
-
-// ===================== CORE MODELS WITH INDEXES =====================
 
 model User {
   id           Int        @id @default(autoincrement())
@@ -92,13 +88,11 @@ model VendorProfile {
   farmLocation        String
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
-
-  // Relations
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  produce            Produce[]
-  rentalSpaces       RentalSpace[]
-  orders             Order[]
-  sustainabilityCert SustainabilityCert?
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  produce             Produce[]
+  rentalSpaces        RentalSpace[]
+  orders              Order[]
+  sustainabilityCert  SustainabilityCert?
 
   @@index([certificationStatus])
   @@index([userId])
@@ -116,11 +110,9 @@ model Produce {
   availableQuantity   Int
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
-
-  // Relations
-  vendor    VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  orders    Order[]
-  cartItems CartItem[]
+  vendor              VendorProfile       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  orders              Order[]
+  cartItems           CartItem[]
 
   @@index([vendorId])
   @@index([category])
@@ -131,18 +123,16 @@ model Produce {
 }
 
 model RentalSpace {
-  id           Int      @id @default(autoincrement())
+  id           Int             @id @default(autoincrement())
   vendorId     Int
   location     String
   size         Float
   price        Float
-  availability Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Relations
-  vendor   VendorProfile   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  bookings RentalBooking[]
+  availability Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  vendor       VendorProfile   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  bookings     RentalBooking[]
 
   @@index([vendorId])
   @@index([availability])
@@ -159,10 +149,8 @@ model RentalBooking {
   endDate   DateTime
   status    OrderStatus @default(PENDING)
   orderDate DateTime    @default(now())
-
-  // Relations
-  space RentalSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  user  User        @relation(fields: [userId], references: [id])
+  space     RentalSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([spaceId])
@@ -172,19 +160,17 @@ model RentalBooking {
 }
 
 model Order {
-  id         Int         @id @default(autoincrement())
+  id         Int           @id @default(autoincrement())
   userId     Int
   produceId  Int
   vendorId   Int
   quantity   Int
   totalPrice Float
-  status     OrderStatus @default(PENDING)
-  orderDate  DateTime    @default(now())
-
-  // Relations
-  user    User          @relation(fields: [userId], references: [id])
-  produce Produce       @relation(fields: [produceId], references: [id])
-  vendor  VendorProfile @relation(fields: [vendorId], references: [id])
+  status     OrderStatus   @default(PENDING)
+  orderDate  DateTime      @default(now())
+  user       User          @relation(fields: [userId], references: [id])
+  produce    Produce       @relation(fields: [produceId], references: [id])
+  vendor     VendorProfile @relation(fields: [vendorId], references: [id])
 
   @@index([userId])
   @@index([vendorId])
@@ -211,15 +197,13 @@ model CartItem {
 }
 
 model CommunityPost {
-  id          Int      @id @default(autoincrement())
+  id          Int                @id @default(autoincrement())
   userId      Int
-  postContent String   @db.Text
-  postDate    DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments CommunityComment[]
+  postContent String             @db.Text
+  postDate    DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments    CommunityComment[]
 
   @@index([userId])
   @@index([postDate])
@@ -227,16 +211,14 @@ model CommunityPost {
 }
 
 model CommunityComment {
-  id        Int      @id @default(autoincrement())
+  id        Int           @id @default(autoincrement())
   postId    Int
   userId    Int
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String        @db.Text
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([postId])
   @@index([userId])
@@ -244,7 +226,6 @@ model CommunityComment {
   @@index([postId, createdAt])
 }
 
-// CRITICAL: This model needs the most optimization
 model PlantTracking {
   id                  Int          @id @default(autoincrement())
   userId              Int
@@ -259,17 +240,15 @@ model PlantTracking {
   lastUpdated         DateTime     @updatedAt
   createdAt           DateTime     @default(now())
 
-  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // CRITICAL INDEXES for sub-5ms queries
-  @@index([userId]) // Basic user filter
-  @@index([userId, createdAt(sort: Desc)]) // MOST IMPORTANT: User's recent plants
-  @@index([healthStatus]) // Health filter
-  @@index([growthStage]) // Growth stage filter
-  @@index([expectedHarvestDate]) // Harvest reminders
-  @@index([userId, healthStatus]) // User's plants by health
-  @@index([userId, growthStage]) // User's plants by stage
+  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([healthStatus])
+  @@index([growthStage])
+  @@index([expectedHarvestDate])
+  @@index([userId, healthStatus])
+  @@index([userId, growthStage])
 }
 
 model SustainabilityCert {
@@ -284,9 +263,7 @@ model SustainabilityCert {
   verifiedAt         DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-
-  // Relations
-  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendor             VendorProfile       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
   @@index([verificationStatus])
@@ -302,9 +279,7 @@ model Notification {
   isRead    Boolean  @default(false)
   metadata  Json?
   createdAt DateTime @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
@@ -320,9 +295,7 @@ model RefreshToken {
   expiresAt DateTime
   revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
@@ -337,9 +310,7 @@ model PasswordResetToken {
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
   userId    Int?
-
-  // Relations
-  user User? @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@index([token])
   @@index([email])
@@ -358,9 +329,7 @@ model AuditLog {
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
-
-  // Relations
-  user User? @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([action])
