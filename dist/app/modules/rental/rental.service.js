@@ -7,484 +7,661 @@ exports.RentalService = void 0;
 const client_1 = require("@prisma/client");
 const prisma_1 = __importDefault(require("../../config/prisma"));
 const redis_cache_service_1 = __importDefault(require("../../services/redis-cache.service"));
-const prisma_query_builder_1 = require("../../shared/utils/prisma-query-builder");
+const socket_service_1 = __importDefault(require("../../services/socket.service"));
 class RentalService {
     static async searchRentalSpaces(filters) {
-        const cacheKey = `rental:spaces:${JSON.stringify(filters)}`;
-        const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
-            return cached;
-        }
-        const queryBuilder = new prisma_query_builder_1.PrismaQueryBuilder('RentalSpace', filters);
-        queryBuilder.setSearchFields(['location']);
-        const conditions = [];
-        if (filters.minSize !== undefined) {
-            conditions.push(client_1.Prisma.sql `size >= ${filters.minSize}`);
-        }
-        if (filters.maxSize !== undefined) {
-            conditions.push(client_1.Prisma.sql `size <= ${filters.maxSize}`);
-        }
-        if (filters.minPrice !== undefined) {
-            conditions.push(client_1.Prisma.sql `price >= ${filters.minPrice}`);
-        }
-        if (filters.maxPrice !== undefined) {
-            conditions.push(client_1.Prisma.sql `price <= ${filters.maxPrice}`);
-        }
-        if (filters.availability !== undefined) {
-            conditions.push(client_1.Prisma.sql `availability = ${filters.availability}`);
-        }
-        else {
-            conditions.push(client_1.Prisma.sql `availability = true`);
-        }
-        if (conditions.length > 0) {
-            const combinedCondition = client_1.Prisma.sql `${client_1.Prisma.join(conditions, ' AND ')}`;
-            queryBuilder.addCustomCondition(combinedCondition);
-        }
-        const customQuery = client_1.Prisma.sql `
-            SELECT 
-                rs.id,
-                rs."vendorId",
-                rs.location,
-                rs.size,
-                rs.price,
-                rs.availability,
-                rs."createdAt",
-                rs."updatedAt",
-                vp.id as vendor_id,
-                vp."farmName",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."phoneNumber" as user_phone
-            FROM "RentalSpace" rs
-            LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
-            LEFT JOIN "User" u ON vp."userId" = u.id
-        `;
-        const result = await queryBuilder.execute(customQuery);
-        const transformedSpaces = result.data.map((space) => ({
-            id: space.id,
-            vendorId: space.vendorId,
-            location: space.location,
-            size: Number(space.size),
-            price: Number(space.price),
-            availability: space.availability,
-            createdAt: space.createdAt,
-            updatedAt: space.updatedAt,
-            vendor: {
-                id: space.vendor_id,
-                farmName: space.farmName,
-                user: {
-                    name: space.user_name,
-                    email: space.user_email,
-                    phoneNumber: space.user_phone || undefined,
+        try {
+            const cacheKey = `rental:spaces:${JSON.stringify(filters)}`;
+            const cached = await redis_cache_service_1.default.getFast(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            const page = filters.page || 1;
+            const limit = Math.min(50, filters.limit || 10);
+            const skip = (page - 1) * limit;
+            const where = {
+                availability: filters.availability !== undefined ? filters.availability : true
+            };
+            if (filters.location && filters.location.trim()) {
+                where.location = {
+                    contains: filters.location.trim(),
+                    mode: 'insensitive'
+                };
+            }
+            if (filters.minSize !== undefined || filters.maxSize !== undefined) {
+                where.size = {};
+                if (filters.minSize !== undefined) {
+                    where.size.gte = filters.minSize;
+                }
+                if (filters.maxSize !== undefined) {
+                    where.size.lte = filters.maxSize;
+                }
+            }
+            if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+                where.price = {};
+                if (filters.minPrice !== undefined) {
+                    where.price.gte = filters.minPrice;
+                }
+                if (filters.maxPrice !== undefined) {
+                    where.price.lte = filters.maxPrice;
+                }
+            }
+            const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
+            const sortBy = filters.sortBy || 'createdAt';
+            const [spaces, total] = await Promise.all([
+                prisma_1.default.rentalSpace.findMany({
+                    where,
+                    skip,
+                    take: limit,
+                    orderBy: { [sortBy]: sortOrder },
+                    include: {
+                        vendor: {
+                            include: {
+                                user: {
+                                    select: {
+                                        name: true,
+                                        email: true,
+                                        phoneNumber: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }),
+                prisma_1.default.rentalSpace.count({ where })
+            ]);
+            const transformedSpaces = spaces.map(space => ({
+                id: space.id,
+                vendorId: space.vendorId,
+                location: space.location,
+                size: space.size,
+                price: space.price,
+                availability: space.availability,
+                createdAt: space.createdAt,
+                updatedAt: space.updatedAt,
+                vendor: {
+                    id: space.vendor.id,
+                    farmName: space.vendor.farmName,
+                    user: {
+                        name: space.vendor.user.name,
+                        email: space.vendor.user.email,
+                        phoneNumber: space.vendor.user.phoneNumber || undefined,
+                    },
                 },
-            },
-        }));
-        const response = {
-            spaces: transformedSpaces,
-            meta: result.meta
-        };
-        await redis_cache_service_1.default.setFast(cacheKey, response, 300);
-        return response;
+            }));
+            const totalPages = Math.ceil(total / limit);
+            const response = {
+                spaces: transformedSpaces,
+                meta: {
+                    page,
+                    limit,
+                    total,
+                    totalPages,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1,
+                }
+            };
+            await redis_cache_service_1.default.setFast(cacheKey, response, 300);
+            return response;
+        }
+        catch (error) {
+            throw new Error(error.message || 'Failed to search rental spaces');
+        }
     }
     static async getRentalSpaceById(spaceId) {
-        const cacheKey = `rental:space:${spaceId}`;
-        const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
-            return cached;
-        }
-        const space = await prisma_1.default.$queryRaw `
-            SELECT 
-                rs.id,
-                rs."vendorId",
-                rs.location,
-                rs.size,
-                rs.price,
-                rs.availability,
-                rs."createdAt",
-                rs."updatedAt",
-                vp.id as vendor_id,
-                vp."farmName",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."phoneNumber" as user_phone
-            FROM "RentalSpace" rs
-            LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
-            LEFT JOIN "User" u ON vp."userId" = u.id
-            WHERE rs.id = ${spaceId} AND rs.availability = true
-            LIMIT 1
-        `;
-        if (!space || space.length === 0) {
-            throw new Error('Rental space not found');
-        }
-        const result = space[0];
-        const response = {
-            id: result.id,
-            vendorId: result.vendorId,
-            location: result.location,
-            size: Number(result.size),
-            price: Number(result.price),
-            availability: result.availability,
-            createdAt: result.createdAt,
-            updatedAt: result.updatedAt,
-            vendor: {
-                id: result.vendor_id,
-                farmName: result.farmName,
-                user: {
-                    name: result.user_name,
-                    email: result.user_email,
-                    phoneNumber: result.user_phone || undefined,
+        try {
+            const cacheKey = `rental:space:${spaceId}`;
+            const cached = await redis_cache_service_1.default.getFast(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            const space = await prisma_1.default.rentalSpace.findFirst({
+                where: {
+                    id: spaceId,
+                    availability: true
                 },
-            },
-        };
-        await redis_cache_service_1.default.setFast(cacheKey, response, 300);
-        return response;
+                include: {
+                    vendor: {
+                        include: {
+                            user: {
+                                select: {
+                                    name: true,
+                                    email: true,
+                                    phoneNumber: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (!space) {
+                throw new Error('Rental space not found');
+            }
+            const response = {
+                id: space.id,
+                vendorId: space.vendorId,
+                location: space.location,
+                size: space.size,
+                price: space.price,
+                availability: space.availability,
+                createdAt: space.createdAt,
+                updatedAt: space.updatedAt,
+                vendor: {
+                    id: space.vendor.id,
+                    farmName: space.vendor.farmName,
+                    user: {
+                        name: space.vendor.user.name,
+                        email: space.vendor.user.email,
+                        phoneNumber: space.vendor.user.phoneNumber || undefined,
+                    },
+                },
+            };
+            await redis_cache_service_1.default.setFast(cacheKey, response, 300);
+            return response;
+        }
+        catch (error) {
+            throw new Error(error.message || 'Failed to fetch rental space');
+        }
     }
     static async createBooking(userId, data) {
-        const space = await prisma_1.default.$queryRaw `
-            SELECT 
-                rs.id,
-                rs.location,
-                rs.size,
-                rs.price,
-                vp.id as vendor_id,
-                vp."farmName",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."phoneNumber" as user_phone
-            FROM "RentalSpace" rs
-            LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
-            LEFT JOIN "User" u ON vp."userId" = u.id
-            WHERE rs.id = ${data.spaceId} AND rs.availability = true
-            LIMIT 1
-        `;
-        if (!space || space.length === 0) {
-            throw new Error('Rental space not available');
-        }
-        const spaceData = space[0];
-        const existingBooking = await prisma_1.default.$queryRaw `
-            SELECT id FROM "RentalBooking"
-            WHERE "spaceId" = ${data.spaceId}
-            AND status != 'CANCELLED'
-            AND (
-                ("startDate" <= ${data.startDate} AND "endDate" >= ${data.startDate})
-                OR ("startDate" <= ${data.endDate} AND "endDate" >= ${data.endDate})
-            )
-            LIMIT 1
-        `;
-        if (existingBooking && existingBooking.length > 0) {
-            throw new Error('Space already booked for selected dates');
-        }
-        const booking = await prisma_1.default.$queryRaw `
-            INSERT INTO "RentalBooking" ("spaceId", "userId", "startDate", "endDate", status, "orderDate")
-            VALUES (${data.spaceId}, ${userId}, ${data.startDate}, ${data.endDate}, 'PENDING', NOW())
-            RETURNING id, "spaceId", "userId", "startDate", "endDate", status, "orderDate"
-        `;
-        const bookingData = booking[0];
-        await prisma_1.default.notification.create({
-            data: {
-                userId: spaceData.user_id,
-                title: 'New Rental Booking',
-                message: `New booking request for your space at ${spaceData.location}`,
-                type: 'RENTAL',
-            },
-        });
-        await redis_cache_service_1.default.delPattern('rental:spaces:*');
-        await redis_cache_service_1.default.delPattern(`rental:bookings:user:${userId}:*`);
-        const response = {
-            id: bookingData.id,
-            spaceId: bookingData.spaceId,
-            userId: bookingData.userId,
-            startDate: bookingData.startDate,
-            endDate: bookingData.endDate,
-            status: bookingData.status,
-            orderDate: bookingData.orderDate,
-            space: {
-                location: spaceData.location,
-                size: Number(spaceData.size),
-                price: Number(spaceData.price),
-                vendor: {
-                    farmName: spaceData.farmName,
+        try {
+            if (data.startDate >= data.endDate) {
+                throw new Error('End date must be after start date');
+            }
+            const space = await prisma_1.default.rentalSpace.findFirst({
+                where: {
+                    id: data.spaceId,
+                    availability: true
+                },
+                include: {
+                    vendor: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    phoneNumber: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (!space) {
+                throw new Error('Rental space not available');
+            }
+            const overlappingBooking = await prisma_1.default.rentalBooking.findFirst({
+                where: {
+                    spaceId: data.spaceId,
+                    status: { not: 'CANCELLED' },
+                    OR: [
+                        {
+                            AND: [
+                                { startDate: { lte: data.startDate } },
+                                { endDate: { gte: data.startDate } }
+                            ]
+                        },
+                        {
+                            AND: [
+                                { startDate: { lte: data.endDate } },
+                                { endDate: { gte: data.endDate } }
+                            ]
+                        }
+                    ]
+                }
+            });
+            if (overlappingBooking) {
+                throw new Error('Space already booked for selected dates');
+            }
+            const booking = await prisma_1.default.rentalBooking.create({
+                data: {
+                    spaceId: data.spaceId,
+                    userId: userId,
+                    startDate: data.startDate,
+                    endDate: data.endDate,
+                    status: client_1.OrderStatus.PENDING,
+                    orderDate: new Date(),
+                },
+                include: {
+                    space: {
+                        include: {
+                            vendor: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            name: true,
+                                            email: true,
+                                            phoneNumber: true,
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     user: {
-                        name: spaceData.user_name,
-                        email: spaceData.user_email,
-                        phoneNumber: spaceData.user_phone || undefined,
+                        select: {
+                            name: true,
+                            email: true,
+                        }
+                    }
+                }
+            });
+            await socket_service_1.default.sendBookingNotification(space.vendor.user.id, {
+                bookingId: booking.id,
+                spaceId: data.spaceId,
+                customerName: booking.user.name,
+                startDate: data.startDate,
+                endDate: data.endDate,
+                timestamp: new Date()
+            });
+            await prisma_1.default.notification.create({
+                data: {
+                    userId: space.vendor.user.id,
+                    title: 'New Rental Booking',
+                    message: `New booking request for your space at ${space.location}`,
+                    type: 'RENTAL',
+                    metadata: {
+                        bookingId: booking.id,
+                        spaceId: data.spaceId,
+                        startDate: data.startDate,
+                        endDate: data.endDate
+                    }
+                },
+            });
+            await Promise.all([
+                redis_cache_service_1.default.delPattern('rental:spaces:*'),
+                redis_cache_service_1.default.delPattern(`rental:bookings:user:${userId}:*`),
+                redis_cache_service_1.default.delPattern(`rental:vendor:bookings:${space.vendor.user.id}:*`)
+            ]);
+            const response = {
+                id: booking.id,
+                spaceId: booking.spaceId,
+                userId: booking.userId,
+                startDate: booking.startDate,
+                endDate: booking.endDate,
+                status: booking.status,
+                orderDate: booking.orderDate,
+                space: {
+                    location: booking.space.location,
+                    size: booking.space.size,
+                    price: booking.space.price,
+                    vendor: {
+                        farmName: booking.space.vendor.farmName,
+                        user: {
+                            name: booking.space.vendor.user.name,
+                            email: booking.space.vendor.user.email,
+                            phoneNumber: booking.space.vendor.user.phoneNumber || undefined,
+                        },
                     },
                 },
-            },
-        };
-        return response;
+            };
+            return response;
+        }
+        catch (error) {
+            throw new Error(error.message || 'Failed to create booking');
+        }
     }
     static async getUserBookings(userId, filters = {}) {
-        const cacheKey = `rental:bookings:user:${userId}:${JSON.stringify(filters)}`;
-        const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
-            return cached;
-        }
-        const page = filters.page || 1;
-        const limit = Math.min(50, filters.limit || 10);
-        const offset = (page - 1) * limit;
-        const sortBy = filters.sortBy || 'orderDate';
-        const sortOrder = filters.sortOrder || 'desc';
-        let whereClause = `"userId" = ${userId}`;
-        if (filters.status) {
-            whereClause += ` AND status = '${filters.status}'`;
-        }
-        const countResult = await prisma_1.default.$queryRaw `
-            SELECT COUNT(*) as total
-            FROM "RentalBooking"
-            WHERE ${client_1.Prisma.raw(whereClause)}
-        `;
-        const total = Number(countResult[0]?.total) || 0;
-        const bookings = await prisma_1.default.$queryRaw `
-            SELECT 
-                rb.id,
-                rb."spaceId",
-                rb."userId",
-                rb."startDate",
-                rb."endDate",
-                rb.status,
-                rb."orderDate",
-                rs.location as space_location,
-                rs.size as space_size,
-                rs.price as space_price,
-                vp."farmName" as vendor_farmName,
-                u.name as vendor_name,
-                u.email as vendor_email,
-                u."phoneNumber" as vendor_phone
-            FROM "RentalBooking" rb
-            LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
-            LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
-            LEFT JOIN "User" u ON vp."userId" = u.id
-            WHERE ${client_1.Prisma.raw(whereClause)}
-            ORDER BY "${sortBy}" ${client_1.Prisma.raw(sortOrder === 'asc' ? 'ASC' : 'DESC')}
-            LIMIT ${limit} OFFSET ${offset}
-        `;
-        const transformedBookings = bookings.map((booking) => ({
-            id: booking.id,
-            spaceId: booking.spaceId,
-            userId: booking.userId,
-            startDate: booking.startDate,
-            endDate: booking.endDate,
-            status: booking.status,
-            orderDate: booking.orderDate,
-            space: {
-                location: booking.space_location,
-                size: Number(booking.space_size),
-                price: Number(booking.space_price),
-                vendor: {
-                    farmName: booking.vendor_farmName,
-                    user: {
-                        name: booking.vendor_name,
-                        email: booking.vendor_email,
-                        phoneNumber: booking.vendor_phone || undefined,
+        try {
+            const cacheKey = `rental:bookings:user:${userId}:${JSON.stringify(filters)}`;
+            const cached = await redis_cache_service_1.default.getFast(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            const page = filters.page || 1;
+            const limit = Math.min(50, filters.limit || 10);
+            const skip = (page - 1) * limit;
+            const where = {
+                userId: userId
+            };
+            if (filters.status) {
+                where.status = filters.status;
+            }
+            const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
+            const sortBy = filters.sortBy || 'orderDate';
+            const [bookings, total] = await Promise.all([
+                prisma_1.default.rentalBooking.findMany({
+                    where,
+                    skip,
+                    take: limit,
+                    orderBy: { [sortBy]: sortOrder },
+                    include: {
+                        space: {
+                            include: {
+                                vendor: {
+                                    include: {
+                                        user: {
+                                            select: {
+                                                name: true,
+                                                email: true,
+                                                phoneNumber: true,
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }),
+                prisma_1.default.rentalBooking.count({ where })
+            ]);
+            const transformedBookings = bookings.map(booking => ({
+                id: booking.id,
+                spaceId: booking.spaceId,
+                userId: booking.userId,
+                startDate: booking.startDate,
+                endDate: booking.endDate,
+                status: booking.status,
+                orderDate: booking.orderDate,
+                space: {
+                    location: booking.space.location,
+                    size: booking.space.size,
+                    price: booking.space.price,
+                    vendor: {
+                        farmName: booking.space.vendor.farmName,
+                        user: {
+                            name: booking.space.vendor.user.name,
+                            email: booking.space.vendor.user.email,
+                            phoneNumber: booking.space.vendor.user.phoneNumber || undefined,
+                        },
                     },
                 },
-            },
-        }));
-        const totalPages = Math.ceil(total / limit);
-        const response = {
-            bookings: transformedBookings,
-            meta: {
-                page,
-                limit,
-                total,
-                totalPages,
-                hasNextPage: page < totalPages,
-                hasPrevPage: page > 1,
-            }
-        };
-        await redis_cache_service_1.default.setFast(cacheKey, response, 120);
-        return response;
+            }));
+            const totalPages = Math.ceil(total / limit);
+            const response = {
+                bookings: transformedBookings,
+                meta: {
+                    page,
+                    limit,
+                    total,
+                    totalPages,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1,
+                }
+            };
+            await redis_cache_service_1.default.setFast(cacheKey, response, 120);
+            return response;
+        }
+        catch (error) {
+            throw new Error(error.message || 'Failed to fetch bookings');
+        }
     }
     static async getBookingById(userId, bookingId) {
-        const cacheKey = `rental:booking:${bookingId}:user:${userId}`;
-        const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
-            return cached;
-        }
-        const booking = await prisma_1.default.$queryRaw `
-            SELECT 
-                rb.id,
-                rb."spaceId",
-                rb."userId",
-                rb."startDate",
-                rb."endDate",
-                rb.status,
-                rb."orderDate",
-                rs.location as space_location,
-                rs.size as space_size,
-                rs.price as space_price,
-                vp."farmName" as vendor_farmName,
-                u.name as vendor_name,
-                u.email as vendor_email,
-                u."phoneNumber" as vendor_phone
-            FROM "RentalBooking" rb
-            LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
-            LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
-            LEFT JOIN "User" u ON vp."userId" = u.id
-            WHERE rb.id = ${bookingId} AND rb."userId" = ${userId}
-            LIMIT 1
-        `;
-        if (!booking || booking.length === 0) {
-            throw new Error('Booking not found');
-        }
-        const result = booking[0];
-        const response = {
-            id: result.id,
-            spaceId: result.spaceId,
-            userId: result.userId,
-            startDate: result.startDate,
-            endDate: result.endDate,
-            status: result.status,
-            orderDate: result.orderDate,
-            space: {
-                location: result.space_location,
-                size: Number(result.space_size),
-                price: Number(result.space_price),
-                vendor: {
-                    farmName: result.vendor_farmName,
-                    user: {
-                        name: result.vendor_name,
-                        email: result.vendor_email,
-                        phoneNumber: result.vendor_phone || undefined,
+        try {
+            const cacheKey = `rental:booking:${bookingId}:user:${userId}`;
+            const cached = await redis_cache_service_1.default.getFast(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            const booking = await prisma_1.default.rentalBooking.findFirst({
+                where: {
+                    id: bookingId,
+                    userId: userId
+                },
+                include: {
+                    space: {
+                        include: {
+                            vendor: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            name: true,
+                                            email: true,
+                                            phoneNumber: true,
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (!booking) {
+                throw new Error('Booking not found');
+            }
+            const response = {
+                id: booking.id,
+                spaceId: booking.spaceId,
+                userId: booking.userId,
+                startDate: booking.startDate,
+                endDate: booking.endDate,
+                status: booking.status,
+                orderDate: booking.orderDate,
+                space: {
+                    location: booking.space.location,
+                    size: booking.space.size,
+                    price: booking.space.price,
+                    vendor: {
+                        farmName: booking.space.vendor.farmName,
+                        user: {
+                            name: booking.space.vendor.user.name,
+                            email: booking.space.vendor.user.email,
+                            phoneNumber: booking.space.vendor.user.phoneNumber || undefined,
+                        },
                     },
                 },
-            },
-        };
-        await redis_cache_service_1.default.setFast(cacheKey, response, 300);
-        return response;
+            };
+            await redis_cache_service_1.default.setFast(cacheKey, response, 300);
+            return response;
+        }
+        catch (error) {
+            throw new Error(error.message || 'Failed to fetch booking');
+        }
     }
     static async cancelBooking(userId, bookingId, reason) {
-        const booking = await prisma_1.default.$queryRaw `
-            SELECT 
-                rb.id,
-                rb.status,
-                rb."spaceId",
-                rs.location,
-                vp."userId" as vendorUserId
-            FROM "RentalBooking" rb
-            LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
-            LEFT JOIN "VendorProfile" vp ON rs."vendorId" = vp.id
-            WHERE rb.id = ${bookingId} AND rb."userId" = ${userId}
-            LIMIT 1
-        `;
-        if (!booking || booking.length === 0) {
-            throw new Error('Booking not found');
+        try {
+            const booking = await prisma_1.default.rentalBooking.findFirst({
+                where: {
+                    id: bookingId,
+                    userId: userId
+                },
+                include: {
+                    space: {
+                        include: {
+                            vendor: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (!booking) {
+                throw new Error('Booking not found');
+            }
+            if (booking.status === client_1.OrderStatus.COMPLETED) {
+                throw new Error('Cannot cancel completed booking');
+            }
+            if (booking.status === client_1.OrderStatus.CANCELLED) {
+                throw new Error('Booking already cancelled');
+            }
+            await prisma_1.default.rentalBooking.update({
+                where: { id: bookingId },
+                data: { status: client_1.OrderStatus.CANCELLED }
+            });
+            await socket_service_1.default.sendBookingStatusUpdate(booking.space.vendor.user.id, bookingId, client_1.OrderStatus.CANCELLED);
+            await prisma_1.default.notification.create({
+                data: {
+                    userId: booking.space.vendor.user.id,
+                    title: 'Booking Cancelled',
+                    message: `Booking for space at ${booking.space.location} has been cancelled${reason ? ` Reason: ${reason}` : ''}`,
+                    type: 'RENTAL',
+                    metadata: {
+                        bookingId: bookingId,
+                        spaceId: booking.spaceId,
+                        reason: reason
+                    }
+                },
+            });
+            await Promise.all([
+                redis_cache_service_1.default.delPattern('rental:spaces:*'),
+                redis_cache_service_1.default.delPattern(`rental:bookings:user:${userId}:*`),
+                redis_cache_service_1.default.delPattern(`rental:vendor:bookings:${booking.space.vendor.user.id}:*`),
+                redis_cache_service_1.default.del(`rental:booking:${bookingId}:user:${userId}`),
+            ]);
+            return { message: 'Booking cancelled successfully' };
         }
-        const bookingData = booking[0];
-        if (bookingData.status === 'COMPLETED') {
-            throw new Error('Cannot cancel completed booking');
+        catch (error) {
+            throw new Error(error.message || 'Failed to cancel booking');
         }
-        await prisma_1.default.$executeRaw `
-            UPDATE "RentalBooking"
-            SET status = 'CANCELLED'
-            WHERE id = ${bookingId}
-        `;
-        await prisma_1.default.notification.create({
-            data: {
-                userId: bookingData.vendoruserid,
-                title: 'Booking Cancelled',
-                message: `Booking for space at ${bookingData.location} has been cancelled${reason ? ` Reason: ${reason}` : ''}`,
-                type: 'RENTAL',
-            },
-        });
-        await Promise.all([
-            redis_cache_service_1.default.delPattern('rental:spaces:*'),
-            redis_cache_service_1.default.delPattern(`rental:bookings:user:${userId}:*`),
-            redis_cache_service_1.default.del(`rental:booking:${bookingId}:user:${userId}`),
-        ]);
-        return { message: 'Booking cancelled successfully' };
     }
     static async getVendorBookings(vendorUserId, filters = {}) {
-        const cacheKey = `rental:vendor:bookings:${vendorUserId}:${JSON.stringify(filters)}`;
-        const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
-            return cached;
-        }
-        const page = filters.page || 1;
-        const limit = Math.min(50, filters.limit || 10);
-        const offset = (page - 1) * limit;
-        const sortBy = filters.sortBy || 'orderDate';
-        const sortOrder = filters.sortOrder || 'desc';
-        const vendor = await prisma_1.default.$queryRaw `
-            SELECT id FROM "VendorProfile" WHERE "userId" = ${vendorUserId} LIMIT 1
-        `;
-        if (!vendor || vendor.length === 0) {
-            throw new Error('Vendor profile not found');
-        }
-        const vendorId = vendor[0].id;
-        let whereClause = `rs."vendorId" = ${vendorId}`;
-        if (filters.status) {
-            whereClause += ` AND rb.status = '${filters.status}'`;
-        }
-        const countResult = await prisma_1.default.$queryRaw `
-            SELECT COUNT(*) as total
-            FROM "RentalBooking" rb
-            LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
-            WHERE ${client_1.Prisma.raw(whereClause)}
-        `;
-        const total = Number(countResult[0]?.total) || 0;
-        const bookings = await prisma_1.default.$queryRaw `
-            SELECT 
-                rb.id,
-                rb."spaceId",
-                rb."userId",
-                rb."startDate",
-                rb."endDate",
-                rb.status,
-                rb."orderDate",
-                rs.location as space_location,
-                rs.size as space_size,
-                rs.price as space_price,
-                u.name as customer_name,
-                u.email as customer_email,
-                u."phoneNumber" as customer_phone
-            FROM "RentalBooking" rb
-            LEFT JOIN "RentalSpace" rs ON rb."spaceId" = rs.id
-            LEFT JOIN "User" u ON rb."userId" = u.id
-            WHERE ${client_1.Prisma.raw(whereClause)}
-            ORDER BY "${sortBy}" ${client_1.Prisma.raw(sortOrder === 'asc' ? 'ASC' : 'DESC')}
-            LIMIT ${limit} OFFSET ${offset}
-        `;
-        const transformedBookings = bookings.map((booking) => ({
-            id: booking.id,
-            spaceId: booking.spaceId,
-            userId: booking.userId,
-            startDate: booking.startDate,
-            endDate: booking.endDate,
-            status: booking.status,
-            orderDate: booking.orderDate,
-            space: {
-                location: booking.space_location,
-                size: Number(booking.space_size),
-                price: Number(booking.space_price),
-                vendor: {
-                    farmName: '',
-                    user: {
-                        name: booking.customer_name,
-                        email: booking.customer_email,
-                        phoneNumber: booking.customer_phone || undefined,
+        try {
+            const cacheKey = `rental:vendor:bookings:${vendorUserId}:${JSON.stringify(filters)}`;
+            const cached = await redis_cache_service_1.default.getFast(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            const vendor = await prisma_1.default.vendorProfile.findUnique({
+                where: { userId: vendorUserId },
+                select: { id: true }
+            });
+            if (!vendor) {
+                throw new Error('Vendor profile not found');
+            }
+            const page = filters.page || 1;
+            const limit = Math.min(50, filters.limit || 10);
+            const skip = (page - 1) * limit;
+            const where = {
+                space: {
+                    vendorId: vendor.id
+                }
+            };
+            if (filters.status) {
+                where.status = filters.status;
+            }
+            const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
+            const sortBy = filters.sortBy || 'orderDate';
+            const [bookings, total] = await Promise.all([
+                prisma_1.default.rentalBooking.findMany({
+                    where,
+                    skip,
+                    take: limit,
+                    orderBy: { [sortBy]: sortOrder },
+                    include: {
+                        space: {
+                            select: {
+                                location: true,
+                                size: true,
+                                price: true,
+                            }
+                        },
+                        user: {
+                            select: {
+                                name: true,
+                                email: true,
+                                phoneNumber: true,
+                            }
+                        }
+                    }
+                }),
+                prisma_1.default.rentalBooking.count({ where })
+            ]);
+            const transformedBookings = bookings.map(booking => ({
+                id: booking.id,
+                spaceId: booking.spaceId,
+                userId: booking.userId,
+                startDate: booking.startDate,
+                endDate: booking.endDate,
+                status: booking.status,
+                orderDate: booking.orderDate,
+                space: {
+                    location: booking.space.location,
+                    size: booking.space.size,
+                    price: booking.space.price,
+                    vendor: {
+                        farmName: '',
+                        user: {
+                            name: booking.user.name,
+                            email: booking.user.email,
+                            phoneNumber: booking.user.phoneNumber || undefined,
+                        },
                     },
                 },
-            },
-        }));
-        const totalPages = Math.ceil(total / limit);
-        const response = {
-            bookings: transformedBookings,
-            meta: {
-                page,
-                limit,
-                total,
-                totalPages,
-                hasNextPage: page < totalPages,
-                hasPrevPage: page > 1,
+            }));
+            const totalPages = Math.ceil(total / limit);
+            const response = {
+                bookings: transformedBookings,
+                meta: {
+                    page,
+                    limit,
+                    total,
+                    totalPages,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1,
+                }
+            };
+            await redis_cache_service_1.default.setFast(cacheKey, response, 120);
+            return response;
+        }
+        catch (error) {
+            throw new Error(error.message || 'Failed to fetch vendor bookings');
+        }
+    }
+    static async updateBookingStatus(vendorUserId, bookingId, status) {
+        try {
+            const booking = await prisma_1.default.rentalBooking.findFirst({
+                where: {
+                    id: bookingId,
+                    space: {
+                        vendor: {
+                            userId: vendorUserId
+                        }
+                    }
+                },
+                include: {
+                    space: true,
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    }
+                }
+            });
+            if (!booking) {
+                throw new Error('Booking not found or unauthorized');
             }
-        };
-        await redis_cache_service_1.default.setFast(cacheKey, response, 120);
-        return response;
+            if (booking.status === client_1.OrderStatus.CANCELLED) {
+                throw new Error('Cannot update cancelled booking');
+            }
+            if (booking.status === client_1.OrderStatus.COMPLETED && status !== client_1.OrderStatus.COMPLETED) {
+                throw new Error('Cannot modify completed booking');
+            }
+            await prisma_1.default.rentalBooking.update({
+                where: { id: bookingId },
+                data: { status: status }
+            });
+            await socket_service_1.default.sendBookingStatusUpdate(booking.user.id, bookingId, status);
+            await prisma_1.default.notification.create({
+                data: {
+                    userId: booking.user.id,
+                    title: 'Booking Status Updated',
+                    message: `Your booking for space at ${booking.space.location} has been ${status.toLowerCase()}`,
+                    type: 'RENTAL',
+                    metadata: {
+                        bookingId: bookingId,
+                        status: status
+                    }
+                },
+            });
+            await Promise.all([
+                redis_cache_service_1.default.delPattern(`rental:bookings:user:${booking.user.id}:*`),
+                redis_cache_service_1.default.delPattern(`rental:vendor:bookings:${vendorUserId}:*`),
+                redis_cache_service_1.default.del(`rental:booking:${bookingId}:user:${booking.user.id}`),
+            ]);
+            return { message: `Booking ${status.toLowerCase()} successfully` };
+        }
+        catch (error) {
+            throw new Error(error.message || 'Failed to update booking status');
+        }
     }
 }
 exports.RentalService = RentalService;

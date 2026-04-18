@@ -4,34 +4,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommunityService = void 0;
-const client_1 = require("@prisma/client");
 const prisma_1 = __importDefault(require("../../config/prisma"));
 const redis_cache_service_1 = __importDefault(require("../../services/redis-cache.service"));
-const prisma_query_builder_1 = require("../../shared/utils/prisma-query-builder");
+const socket_service_1 = __importDefault(require("../../services/socket.service"));
 class CommunityService {
     static async createPost(userId, data) {
-        const post = await prisma_1.default.$queryRaw `
-            INSERT INTO "CommunityPost" ("userId", "postContent", "postDate", "updatedAt")
-            VALUES (${userId}, ${data.postContent}, NOW(), NOW())
-            RETURNING id, "postContent", "postDate", "updatedAt"
-        `;
-        const postData = post[0];
-        const user = await prisma_1.default.$queryRaw `
-            SELECT id, name, email, "profileImage"
-            FROM "User"
-            WHERE id = ${userId}
-            LIMIT 1
-        `;
+        const post = await prisma_1.default.communityPost.create({
+            data: { userId, postContent: data.postContent },
+            include: {
+                user: { select: { id: true, name: true, email: true, profileImage: true } }
+            }
+        });
         const response = {
-            id: postData.id,
-            postContent: postData.postContent,
-            postDate: postData.postDate,
-            updatedAt: postData.updatedAt,
+            id: post.id, postContent: post.postContent, postDate: post.postDate,
+            updatedAt: post.updatedAt,
             user: {
-                id: user[0].id,
-                name: user[0].name,
-                email: user[0].email,
-                profileImage: user[0].profileImage || undefined,
+                id: post.user.id, name: post.user.name, email: post.user.email,
+                profileImage: post.user.profileImage || undefined,
             },
             commentCount: 0,
         };
@@ -39,44 +28,27 @@ class CommunityService {
         return response;
     }
     static async updatePost(userId, postId, data) {
-        const existing = await prisma_1.default.$queryRaw `
-            SELECT id FROM "CommunityPost"
-            WHERE id = ${postId} AND "userId" = ${userId}
-            LIMIT 1
-        `;
-        if (!existing || existing.length === 0) {
+        const existingPost = await prisma_1.default.communityPost.findFirst({
+            where: { id: postId, userId }, select: { id: true }
+        });
+        if (!existingPost)
             throw new Error('Post not found or unauthorized');
-        }
-        const updated = await prisma_1.default.$queryRaw `
-            UPDATE "CommunityPost"
-            SET 
-                "postContent" = COALESCE(${data.postContent}, "postContent"),
-                "updatedAt" = NOW()
-            WHERE id = ${postId}
-            RETURNING id, "postContent", "postDate", "updatedAt"
-        `;
-        const postData = updated[0];
-        const user = await prisma_1.default.$queryRaw `
-            SELECT id, name, email, "profileImage"
-            FROM "User"
-            WHERE id = ${userId}
-            LIMIT 1
-        `;
-        const commentCount = await prisma_1.default.$queryRaw `
-            SELECT COUNT(*) as count FROM "CommunityComment" WHERE "postId" = ${postId}
-        `;
+        const updatedPost = await prisma_1.default.communityPost.update({
+            where: { id: postId },
+            data: { postContent: data.postContent },
+            include: {
+                user: { select: { id: true, name: true, email: true, profileImage: true } }
+            }
+        });
+        const commentCount = await prisma_1.default.communityComment.count({ where: { postId } });
         const response = {
-            id: postData.id,
-            postContent: postData.postContent,
-            postDate: postData.postDate,
-            updatedAt: postData.updatedAt,
+            id: updatedPost.id, postContent: updatedPost.postContent,
+            postDate: updatedPost.postDate, updatedAt: updatedPost.updatedAt,
             user: {
-                id: user[0].id,
-                name: user[0].name,
-                email: user[0].email,
-                profileImage: user[0].profileImage || undefined,
+                id: updatedPost.user.id, name: updatedPost.user.name,
+                email: updatedPost.user.email, profileImage: updatedPost.user.profileImage || undefined,
             },
-            commentCount: Number(commentCount[0]?.count) || 0,
+            commentCount,
         };
         await Promise.all([
             redis_cache_service_1.default.delPattern('community:posts:*'),
@@ -87,54 +59,48 @@ class CommunityService {
     static async getAllPosts(queryParams = {}) {
         const cacheKey = `community:posts:${JSON.stringify(queryParams)}`;
         const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
+        if (cached)
             return cached;
+        const page = queryParams.page || 1;
+        const limit = Math.min(50, queryParams.limit || 10);
+        const skip = (page - 1) * limit;
+        const sortBy = queryParams.sortBy || 'postDate';
+        const sortOrder = queryParams.sortOrder || 'desc';
+        const where = {};
+        if (queryParams.searchTerm)
+            where.postContent = { contains: queryParams.searchTerm, mode: 'insensitive' };
+        if (queryParams.userId)
+            where.userId = queryParams.userId;
+        if (queryParams.dateFrom || queryParams.dateTo) {
+            where.postDate = {};
+            if (queryParams.dateFrom)
+                where.postDate.gte = queryParams.dateFrom;
+            if (queryParams.dateTo)
+                where.postDate.lte = queryParams.dateTo;
         }
-        const queryBuilder = new prisma_query_builder_1.PrismaQueryBuilder('CommunityPost', queryParams);
-        queryBuilder.setSearchFields(['postContent']);
-        if (queryParams.dateFrom) {
-            const dateCondition = client_1.Prisma.sql `"postDate" >= ${queryParams.dateFrom}`;
-            queryBuilder.addCustomCondition(dateCondition);
-        }
-        if (queryParams.dateTo) {
-            const dateCondition = client_1.Prisma.sql `"postDate" <= ${queryParams.dateTo}`;
-            queryBuilder.addCustomCondition(dateCondition);
-        }
-        if (queryParams.userId) {
-            const userCondition = client_1.Prisma.sql `"userId" = ${queryParams.userId}`;
-            queryBuilder.addCustomCondition(userCondition);
-        }
-        const customQuery = client_1.Prisma.sql `
-            SELECT 
-                cp.id,
-                cp."postContent",
-                cp."postDate",
-                cp."updatedAt",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."profileImage" as user_profileImage,
-                (SELECT COUNT(*) FROM "CommunityComment" WHERE "postId" = cp.id) as comment_count
-            FROM "CommunityPost" cp
-            LEFT JOIN "User" u ON cp."userId" = u.id
-        `;
-        const result = await queryBuilder.execute(customQuery);
-        const transformedPosts = result.data.map((post) => ({
-            id: post.id,
-            postContent: post.postContent,
-            postDate: post.postDate,
+        const [posts, total] = await Promise.all([
+            prisma_1.default.communityPost.findMany({
+                where, skip, take: limit, orderBy: { [sortBy]: sortOrder },
+                include: {
+                    user: { select: { id: true, name: true, email: true, profileImage: true } },
+                    _count: { select: { comments: true } }
+                }
+            }),
+            prisma_1.default.communityPost.count({ where })
+        ]);
+        const transformedPosts = posts.map(post => ({
+            id: post.id, postContent: post.postContent, postDate: post.postDate,
             updatedAt: post.updatedAt,
             user: {
-                id: post.user_id,
-                name: post.user_name,
-                email: post.user_email,
-                profileImage: post.user_profileimage || undefined,
+                id: post.user.id, name: post.user.name, email: post.user.email,
+                profileImage: post.user.profileImage || undefined,
             },
-            commentCount: Number(post.comment_count) || 0,
+            commentCount: post._count.comments,
         }));
+        const totalPages = Math.ceil(total / limit);
         const response = {
             data: transformedPosts,
-            meta: result.meta
+            meta: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 }
         };
         await redis_cache_service_1.default.setFast(cacheKey, response, 120);
         return response;
@@ -142,84 +108,49 @@ class CommunityService {
     static async getPostById(postId) {
         const cacheKey = `community:post:${postId}`;
         const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
+        if (cached)
             return cached;
-        }
-        const post = await prisma_1.default.$queryRaw `
-            SELECT 
-                cp.id,
-                cp."postContent",
-                cp."postDate",
-                cp."updatedAt",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."profileImage" as user_profileImage,
-                (SELECT COUNT(*) FROM "CommunityComment" WHERE "postId" = cp.id) as comment_count
-            FROM "CommunityPost" cp
-            LEFT JOIN "User" u ON cp."userId" = u.id
-            WHERE cp.id = ${postId}
-            LIMIT 1
-        `;
-        if (!post || post.length === 0) {
+        const post = await prisma_1.default.communityPost.findFirst({
+            where: { id: postId },
+            include: {
+                user: { select: { id: true, name: true, email: true, profileImage: true } },
+                comments: {
+                    orderBy: { createdAt: 'asc' },
+                    include: { user: { select: { id: true, name: true, profileImage: true } } }
+                },
+                _count: { select: { comments: true } }
+            }
+        });
+        if (!post)
             throw new Error('Post not found');
-        }
-        const postData = post[0];
-        const comments = await prisma_1.default.$queryRaw `
-            SELECT 
-                cc.id,
-                cc.content,
-                cc."createdAt",
-                u.id as user_id,
-                u.name as user_name,
-                u."profileImage" as user_profileImage
-            FROM "CommunityComment" cc
-            LEFT JOIN "User" u ON cc."userId" = u.id
-            WHERE cc."postId" = ${postId}
-            ORDER BY cc."createdAt" ASC
-        `;
-        const formattedComments = comments.map((comment) => ({
-            id: comment.id,
-            content: comment.content,
-            createdAt: comment.createdAt,
+        const formattedComments = post.comments.map(comment => ({
+            id: comment.id, content: comment.content, createdAt: comment.createdAt,
             user: {
-                id: comment.user_id,
-                name: comment.user_name,
-                profileImage: comment.user_profileimage || undefined,
+                id: comment.user.id, name: comment.user.name,
+                profileImage: comment.user.profileImage || undefined,
             },
         }));
         const response = {
-            id: postData.id,
-            postContent: postData.postContent,
-            postDate: postData.postDate,
-            updatedAt: postData.updatedAt,
+            id: post.id, postContent: post.postContent, postDate: post.postDate,
+            updatedAt: post.updatedAt,
             user: {
-                id: postData.user_id,
-                name: postData.user_name,
-                email: postData.user_email,
-                profileImage: postData.user_profileimage || undefined,
+                id: post.user.id, name: post.user.name, email: post.user.email,
+                profileImage: post.user.profileImage || undefined,
             },
-            commentCount: Number(postData.comment_count) || 0,
+            commentCount: post._count.comments,
             comments: formattedComments,
         };
         await redis_cache_service_1.default.setFast(cacheKey, response, 300);
         return response;
     }
     static async deletePost(userId, postId, isAdmin = false) {
-        let whereClause = `id = ${postId}`;
-        if (!isAdmin) {
-            whereClause += ` AND "userId" = ${userId}`;
-        }
-        const existing = await prisma_1.default.$queryRaw `
-            SELECT id FROM "CommunityPost"
-            WHERE ${client_1.Prisma.raw(whereClause)}
-            LIMIT 1
-        `;
-        if (!existing || existing.length === 0) {
+        const where = { id: postId };
+        if (!isAdmin)
+            where.userId = userId;
+        const existingPost = await prisma_1.default.communityPost.findFirst({ where, select: { id: true } });
+        if (!existingPost)
             throw new Error('Post not found or unauthorized');
-        }
-        await prisma_1.default.$executeRaw `DELETE FROM "CommunityComment" WHERE "postId" = ${postId}`;
-        await prisma_1.default.$executeRaw `DELETE FROM "CommunityPost" WHERE id = ${postId}`;
+        await prisma_1.default.communityPost.delete({ where: { id: postId } });
         await Promise.all([
             redis_cache_service_1.default.delPattern('community:posts:*'),
             redis_cache_service_1.default.del(`community:post:${postId}`)
@@ -227,34 +158,27 @@ class CommunityService {
         return { message: 'Post deleted successfully' };
     }
     static async createComment(userId, postId, data) {
-        const post = await prisma_1.default.$queryRaw `
-            SELECT id FROM "CommunityPost" WHERE id = ${postId} LIMIT 1
-        `;
-        if (!post || post.length === 0) {
+        const post = await prisma_1.default.communityPost.findFirst({ where: { id: postId }, select: { id: true, userId: true } });
+        if (!post)
             throw new Error('Post not found');
-        }
-        const comment = await prisma_1.default.$queryRaw `
-            INSERT INTO "CommunityComment" ("postId", "userId", content, "createdAt", "updatedAt")
-            VALUES (${postId}, ${userId}, ${data.content}, NOW(), NOW())
-            RETURNING id, content, "createdAt"
-        `;
-        const commentData = comment[0];
-        const user = await prisma_1.default.$queryRaw `
-            SELECT id, name, "profileImage"
-            FROM "User"
-            WHERE id = ${userId}
-            LIMIT 1
-        `;
+        const comment = await prisma_1.default.communityComment.create({
+            data: { postId, userId, content: data.content },
+            include: { user: { select: { id: true, name: true, profileImage: true } } }
+        });
         const response = {
-            id: commentData.id,
-            content: commentData.content,
-            createdAt: commentData.createdAt,
+            id: comment.id, content: comment.content, createdAt: comment.createdAt,
             user: {
-                id: user[0].id,
-                name: user[0].name,
-                profileImage: user[0].profileImage || undefined,
+                id: comment.user.id, name: comment.user.name,
+                profileImage: comment.user.profileImage || undefined,
             },
         };
+        const commenter = await prisma_1.default.user.findUnique({
+            where: { id: userId },
+            select: { name: true }
+        });
+        if (post.userId !== userId) {
+            await socket_service_1.default.sendCommentNotification(post.userId, postId, commenter?.name || 'Someone');
+        }
         await Promise.all([
             redis_cache_service_1.default.delPattern('community:posts:*'),
             redis_cache_service_1.default.del(`community:post:${postId}`),
@@ -265,78 +189,47 @@ class CommunityService {
     static async getComments(postId, queryParams = {}) {
         const cacheKey = `community:comments:${postId}:${JSON.stringify(queryParams)}`;
         const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
+        if (cached)
             return cached;
-        }
         const page = queryParams.page || 1;
         const limit = Math.min(50, queryParams.limit || 20);
-        const offset = (page - 1) * limit;
+        const skip = (page - 1) * limit;
         const sortBy = queryParams.sortBy || 'createdAt';
         const sortOrder = queryParams.sortOrder || 'asc';
-        let whereClause = `"postId" = ${postId}`;
-        if (queryParams.userId) {
-            whereClause += ` AND "userId" = ${queryParams.userId}`;
-        }
-        const countResult = await prisma_1.default.$queryRaw `
-            SELECT COUNT(*) as count
-            FROM "CommunityComment"
-            WHERE ${client_1.Prisma.raw(whereClause)}
-        `;
-        const total = Number(countResult[0]?.count) || 0;
-        const comments = await prisma_1.default.$queryRaw `
-            SELECT 
-                cc.id,
-                cc.content,
-                cc."createdAt",
-                u.id as user_id,
-                u.name as user_name,
-                u."profileImage" as user_profileImage
-            FROM "CommunityComment" cc
-            LEFT JOIN "User" u ON cc."userId" = u.id
-            WHERE ${client_1.Prisma.raw(whereClause)}
-            ORDER BY "${sortBy}" ${client_1.Prisma.raw(sortOrder === 'asc' ? 'ASC' : 'DESC')}
-            LIMIT ${limit} OFFSET ${offset}
-        `;
-        const transformedComments = comments.map((comment) => ({
-            id: comment.id,
-            content: comment.content,
-            createdAt: comment.createdAt,
+        const where = { postId };
+        if (queryParams.userId)
+            where.userId = queryParams.userId;
+        const [comments, total] = await Promise.all([
+            prisma_1.default.communityComment.findMany({
+                where, skip, take: limit, orderBy: { [sortBy]: sortOrder },
+                include: { user: { select: { id: true, name: true, profileImage: true } } }
+            }),
+            prisma_1.default.communityComment.count({ where })
+        ]);
+        const transformedComments = comments.map(comment => ({
+            id: comment.id, content: comment.content, createdAt: comment.createdAt,
             user: {
-                id: comment.user_id,
-                name: comment.user_name,
-                profileImage: comment.user_profileimage || undefined,
+                id: comment.user.id, name: comment.user.name,
+                profileImage: comment.user.profileImage || undefined,
             },
         }));
         const totalPages = Math.ceil(total / limit);
         const response = {
             data: transformedComments,
-            meta: {
-                page,
-                limit,
-                total,
-                totalPages,
-                hasNextPage: page < totalPages,
-                hasPrevPage: page > 1,
-            }
+            meta: { page, limit, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 }
         };
         await redis_cache_service_1.default.setFast(cacheKey, response, 120);
         return response;
     }
     static async deleteComment(userId, commentId, isAdmin = false) {
-        let whereClause = `id = ${commentId}`;
-        if (!isAdmin) {
-            whereClause += ` AND "userId" = ${userId}`;
-        }
-        const comment = await prisma_1.default.$queryRaw `
-            SELECT "postId" FROM "CommunityComment"
-            WHERE ${client_1.Prisma.raw(whereClause)}
-            LIMIT 1
-        `;
-        if (!comment || comment.length === 0) {
+        const where = { id: commentId };
+        if (!isAdmin)
+            where.userId = userId;
+        const comment = await prisma_1.default.communityComment.findFirst({ where, select: { postId: true } });
+        if (!comment)
             throw new Error('Comment not found or unauthorized');
-        }
-        const postId = comment[0].postId;
-        await prisma_1.default.$executeRaw `DELETE FROM "CommunityComment" WHERE id = ${commentId}`;
+        const postId = comment.postId;
+        await prisma_1.default.communityComment.delete({ where: { id: commentId } });
         await Promise.all([
             redis_cache_service_1.default.delPattern('community:posts:*'),
             redis_cache_service_1.default.del(`community:post:${postId}`),
@@ -347,54 +240,12 @@ class CommunityService {
     static async getUserPosts(userId, queryParams = {}) {
         const cacheKey = `community:user:posts:${userId}:${JSON.stringify(queryParams)}`;
         const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
+        if (cached)
             return cached;
-        }
         const paramsWithUser = { ...queryParams, userId };
         const result = await this.getAllPosts(paramsWithUser);
         await redis_cache_service_1.default.setFast(cacheKey, result, 120);
         return result;
-    }
-    static async getTrendingPosts(limit = 10) {
-        const cacheKey = `community:trending:posts`;
-        const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
-            return cached;
-        }
-        const posts = await prisma_1.default.$queryRaw `
-            SELECT 
-                cp.id,
-                cp."postContent",
-                cp."postDate",
-                cp."updatedAt",
-                u.id as user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u."profileImage" as user_profileImage,
-                COUNT(cc.id) as comment_count
-            FROM "CommunityPost" cp
-            LEFT JOIN "User" u ON cp."userId" = u.id
-            LEFT JOIN "CommunityComment" cc ON cp.id = cc."postId"
-            WHERE cp."postDate" >= NOW() - INTERVAL '7 days'
-            GROUP BY cp.id, u.id
-            ORDER BY comment_count DESC, cp."postDate" DESC
-            LIMIT ${limit}
-        `;
-        const trendingPosts = posts.map((post) => ({
-            id: post.id,
-            postContent: post.postContent,
-            postDate: post.postDate,
-            updatedAt: post.updatedAt,
-            user: {
-                id: post.user_id,
-                name: post.user_name,
-                email: post.user_email,
-                profileImage: post.user_profileimage || undefined,
-            },
-            commentCount: Number(post.comment_count) || 0,
-        }));
-        await redis_cache_service_1.default.setFast(cacheKey, trendingPosts, 300);
-        return trendingPosts;
     }
 }
 exports.CommunityService = CommunityService;

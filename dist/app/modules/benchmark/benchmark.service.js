@@ -366,24 +366,13 @@ class BenchmarkService {
     }
     static async runFullBenchmark() {
         const results = {};
-        console.log('🚀 Starting full benchmark...');
-        console.log('📊 This may take a few minutes...\n');
-        console.log('📊 Testing CREATE PLANT...');
         results.createPlant = await this.benchmarkCreatePlant(100);
-        console.log('📊 Testing READ PLANTS...');
         results.readPlants = await this.benchmarkReadPlants(100);
-        console.log('📊 Testing UPDATE PLANT...');
         results.updatePlant = await this.benchmarkUpdatePlant(100);
-        console.log('📊 Testing DELETE PLANT...');
         results.deletePlant = await this.benchmarkDeletePlant(50);
-        console.log('📊 Testing CREATE ORDER...');
         results.createOrder = await this.benchmarkCreateOrder(100);
-        console.log('📊 Testing GET PRODUCTS...');
         results.getProducts = await this.benchmarkGetProducts(100);
-        console.log('📊 Testing CREATE POST...');
         results.createPost = await this.benchmarkCreatePost(100);
-        console.log('📊 Testing CONCURRENT OPERATIONS...');
-        results.concurrent = await this.benchmarkConcurrentOperations(30, 15);
         let fastestOperation = '';
         let fastestTime = Infinity;
         let slowestOperation = '';
@@ -445,11 +434,6 @@ class BenchmarkService {
                 report_data: report,
             },
         });
-        console.log('\n✅ Full benchmark completed!');
-        console.log(`📈 Average Throughput: ${avgThroughput.toFixed(2)} ops/sec`);
-        console.log(`⚡ Average Response: ${avgResponse.toFixed(2)}ms`);
-        console.log(`🚀 Fastest: ${fastestOperation} (${fastestTime.toFixed(2)}ms)`);
-        console.log(`🐌 Slowest: ${slowestOperation} (${slowestTime.toFixed(2)}ms)\n`);
         return report;
     }
     static async getBenchmarkReport() {
@@ -546,7 +530,6 @@ class BenchmarkService {
         this.testPostIds = [];
         await redis_cache_service_1.default.delPattern('benchmark:*');
         this.benchmarkResults.clear();
-        console.log('✅ Benchmark test data cleaned up');
     }
     static calculateMetrics(operation, iterations, times) {
         const totalTimeMs = times.reduce((a, b) => a + b, 0);

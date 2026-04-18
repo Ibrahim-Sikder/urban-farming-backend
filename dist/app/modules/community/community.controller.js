@@ -78,16 +78,6 @@ class CommunityController {
             response_1.ResponseHandler.error(res, error.message, 400);
         }
     }
-    static async getTrendingPosts(req, res) {
-        try {
-            const limit = req.query.limit ? parseInt(req.query.limit) : 10;
-            const posts = await community_service_1.CommunityService.getTrendingPosts(limit);
-            response_1.ResponseHandler.success(res, posts, 'Trending posts fetched successfully');
-        }
-        catch (error) {
-            response_1.ResponseHandler.error(res, error.message, 400);
-        }
-    }
     static async createComment(req, res) {
         try {
             const postId = parseInt(req.params.postId);

@@ -105,6 +105,18 @@ CREATE TABLE "Order" (
 );
 
 -- CreateTable
+CREATE TABLE "CartItem" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "produceId" INTEGER NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CartItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "CommunityPost" (
     "id" SERIAL NOT NULL,
     "userId" INTEGER NOT NULL,
@@ -113,6 +125,18 @@ CREATE TABLE "CommunityPost" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CommunityPost_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CommunityComment" (
+    "id" SERIAL NOT NULL,
+    "postId" INTEGER NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "content" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CommunityComment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -148,6 +172,20 @@ CREATE TABLE "SustainabilityCert" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SustainabilityCert_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "title" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -193,17 +231,13 @@ CREATE TABLE "AuditLog" (
 );
 
 -- CreateTable
-CREATE TABLE "Notification" (
-    "id" SERIAL NOT NULL,
-    "userId" INTEGER NOT NULL,
-    "title" TEXT NOT NULL,
-    "message" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "isRead" BOOLEAN NOT NULL DEFAULT false,
-    "metadata" JSONB,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE "BenchmarkReport" (
+    "id" TEXT NOT NULL,
+    "report_data" JSONB NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "BenchmarkReport_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -219,6 +253,12 @@ CREATE INDEX "User_role_idx" ON "User"("role");
 CREATE INDEX "User_status_idx" ON "User"("status");
 
 -- CreateIndex
+CREATE INDEX "User_createdAt_idx" ON "User"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "User_role_status_idx" ON "User"("role", "status");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "VendorProfile_userId_key" ON "VendorProfile"("userId");
 
 -- CreateIndex
@@ -226,6 +266,9 @@ CREATE INDEX "VendorProfile_certificationStatus_idx" ON "VendorProfile"("certifi
 
 -- CreateIndex
 CREATE INDEX "VendorProfile_userId_idx" ON "VendorProfile"("userId");
+
+-- CreateIndex
+CREATE INDEX "VendorProfile_createdAt_idx" ON "VendorProfile"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "Produce_vendorId_idx" ON "Produce"("vendorId");
@@ -237,6 +280,15 @@ CREATE INDEX "Produce_category_idx" ON "Produce"("category");
 CREATE INDEX "Produce_certificationStatus_idx" ON "Produce"("certificationStatus");
 
 -- CreateIndex
+CREATE INDEX "Produce_price_idx" ON "Produce"("price");
+
+-- CreateIndex
+CREATE INDEX "Produce_createdAt_idx" ON "Produce"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Produce_vendorId_certificationStatus_idx" ON "Produce"("vendorId", "certificationStatus");
+
+-- CreateIndex
 CREATE INDEX "RentalSpace_vendorId_idx" ON "RentalSpace"("vendorId");
 
 -- CreateIndex
@@ -246,6 +298,12 @@ CREATE INDEX "RentalSpace_availability_idx" ON "RentalSpace"("availability");
 CREATE INDEX "RentalSpace_location_idx" ON "RentalSpace"("location");
 
 -- CreateIndex
+CREATE INDEX "RentalSpace_price_idx" ON "RentalSpace"("price");
+
+-- CreateIndex
+CREATE INDEX "RentalSpace_availability_price_idx" ON "RentalSpace"("availability", "price");
+
+-- CreateIndex
 CREATE INDEX "RentalBooking_userId_idx" ON "RentalBooking"("userId");
 
 -- CreateIndex
@@ -253,6 +311,12 @@ CREATE INDEX "RentalBooking_spaceId_idx" ON "RentalBooking"("spaceId");
 
 -- CreateIndex
 CREATE INDEX "RentalBooking_status_idx" ON "RentalBooking"("status");
+
+-- CreateIndex
+CREATE INDEX "RentalBooking_startDate_endDate_idx" ON "RentalBooking"("startDate", "endDate");
+
+-- CreateIndex
+CREATE INDEX "RentalBooking_userId_status_idx" ON "RentalBooking"("userId", "status");
 
 -- CreateIndex
 CREATE INDEX "Order_userId_idx" ON "Order"("userId");
@@ -267,19 +331,61 @@ CREATE INDEX "Order_status_idx" ON "Order"("status");
 CREATE INDEX "Order_orderDate_idx" ON "Order"("orderDate");
 
 -- CreateIndex
+CREATE INDEX "Order_userId_status_idx" ON "Order"("userId", "status");
+
+-- CreateIndex
+CREATE INDEX "Order_vendorId_orderDate_idx" ON "Order"("vendorId", "orderDate");
+
+-- CreateIndex
+CREATE INDEX "CartItem_userId_idx" ON "CartItem"("userId");
+
+-- CreateIndex
+CREATE INDEX "CartItem_produceId_idx" ON "CartItem"("produceId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CartItem_userId_produceId_key" ON "CartItem"("userId", "produceId");
+
+-- CreateIndex
 CREATE INDEX "CommunityPost_userId_idx" ON "CommunityPost"("userId");
 
 -- CreateIndex
 CREATE INDEX "CommunityPost_postDate_idx" ON "CommunityPost"("postDate");
 
 -- CreateIndex
+CREATE INDEX "CommunityPost_userId_postDate_idx" ON "CommunityPost"("userId", "postDate");
+
+-- CreateIndex
+CREATE INDEX "CommunityComment_postId_idx" ON "CommunityComment"("postId");
+
+-- CreateIndex
+CREATE INDEX "CommunityComment_userId_idx" ON "CommunityComment"("userId");
+
+-- CreateIndex
+CREATE INDEX "CommunityComment_createdAt_idx" ON "CommunityComment"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "CommunityComment_postId_createdAt_idx" ON "CommunityComment"("postId", "createdAt");
+
+-- CreateIndex
 CREATE INDEX "PlantTracking_userId_idx" ON "PlantTracking"("userId");
+
+-- CreateIndex
+CREATE INDEX "PlantTracking_userId_createdAt_idx" ON "PlantTracking"("userId", "createdAt" DESC);
 
 -- CreateIndex
 CREATE INDEX "PlantTracking_healthStatus_idx" ON "PlantTracking"("healthStatus");
 
 -- CreateIndex
+CREATE INDEX "PlantTracking_growthStage_idx" ON "PlantTracking"("growthStage");
+
+-- CreateIndex
 CREATE INDEX "PlantTracking_expectedHarvestDate_idx" ON "PlantTracking"("expectedHarvestDate");
+
+-- CreateIndex
+CREATE INDEX "PlantTracking_userId_healthStatus_idx" ON "PlantTracking"("userId", "healthStatus");
+
+-- CreateIndex
+CREATE INDEX "PlantTracking_userId_growthStage_idx" ON "PlantTracking"("userId", "growthStage");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SustainabilityCert_vendorId_key" ON "SustainabilityCert"("vendorId");
@@ -294,6 +400,21 @@ CREATE INDEX "SustainabilityCert_verificationStatus_idx" ON "SustainabilityCert"
 CREATE INDEX "SustainabilityCert_expiryDate_idx" ON "SustainabilityCert"("expiryDate");
 
 -- CreateIndex
+CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
+
+-- CreateIndex
+CREATE INDEX "Notification_isRead_idx" ON "Notification"("isRead");
+
+-- CreateIndex
+CREATE INDEX "Notification_createdAt_idx" ON "Notification"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Notification_userId_isRead_idx" ON "Notification"("userId", "isRead");
+
+-- CreateIndex
+CREATE INDEX "Notification_userId_createdAt_idx" ON "Notification"("userId", "createdAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "RefreshToken_token_key" ON "RefreshToken"("token");
 
 -- CreateIndex
@@ -301,6 +422,9 @@ CREATE INDEX "RefreshToken_token_idx" ON "RefreshToken"("token");
 
 -- CreateIndex
 CREATE INDEX "RefreshToken_userId_idx" ON "RefreshToken"("userId");
+
+-- CreateIndex
+CREATE INDEX "RefreshToken_expiresAt_idx" ON "RefreshToken"("expiresAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PasswordResetToken_token_key" ON "PasswordResetToken"("token");
@@ -312,6 +436,9 @@ CREATE INDEX "PasswordResetToken_token_idx" ON "PasswordResetToken"("token");
 CREATE INDEX "PasswordResetToken_email_idx" ON "PasswordResetToken"("email");
 
 -- CreateIndex
+CREATE INDEX "PasswordResetToken_expiresAt_idx" ON "PasswordResetToken"("expiresAt");
+
+-- CreateIndex
 CREATE INDEX "AuditLog_userId_idx" ON "AuditLog"("userId");
 
 -- CreateIndex
@@ -321,13 +448,10 @@ CREATE INDEX "AuditLog_action_idx" ON "AuditLog"("action");
 CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
+CREATE INDEX "AuditLog_entity_entityId_idx" ON "AuditLog"("entity", "entityId");
 
 -- CreateIndex
-CREATE INDEX "Notification_isRead_idx" ON "Notification"("isRead");
-
--- CreateIndex
-CREATE INDEX "Notification_createdAt_idx" ON "Notification"("createdAt");
+CREATE INDEX "BenchmarkReport_created_at_idx" ON "BenchmarkReport"("created_at");
 
 -- AddForeignKey
 ALTER TABLE "VendorProfile" ADD CONSTRAINT "VendorProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -354,13 +478,28 @@ ALTER TABLE "Order" ADD CONSTRAINT "Order_produceId_fkey" FOREIGN KEY ("produceI
 ALTER TABLE "Order" ADD CONSTRAINT "Order_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "VendorProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "CartItem" ADD CONSTRAINT "CartItem_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CartItem" ADD CONSTRAINT "CartItem_produceId_fkey" FOREIGN KEY ("produceId") REFERENCES "Produce"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "CommunityPost" ADD CONSTRAINT "CommunityPost_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CommunityComment" ADD CONSTRAINT "CommunityComment_postId_fkey" FOREIGN KEY ("postId") REFERENCES "CommunityPost"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CommunityComment" ADD CONSTRAINT "CommunityComment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PlantTracking" ADD CONSTRAINT "PlantTracking_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SustainabilityCert" ADD CONSTRAINT "SustainabilityCert_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "VendorProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -370,6 +509,3 @@ ALTER TABLE "PasswordResetToken" ADD CONSTRAINT "PasswordResetToken_userId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

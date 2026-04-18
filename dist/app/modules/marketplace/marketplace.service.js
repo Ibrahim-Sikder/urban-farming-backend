@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MarketplaceService = void 0;
 const prisma_1 = __importDefault(require("../../config/prisma"));
 const redis_cache_service_1 = __importDefault(require("../../services/redis-cache.service"));
+const socket_service_1 = __importDefault(require("../../services/socket.service"));
 class MarketplaceService {
     static async createProduce(vendorUserId, data) {
         const vendor = await prisma_1.default.vendorProfile.findUnique({
@@ -130,12 +131,10 @@ class MarketplaceService {
             certificationStatus: 'APPROVED',
             availableQuantity: { gt: 0 }
         };
-        if (filters.category) {
+        if (filters.category)
             where.category = filters.category;
-        }
-        if (filters.vendorId) {
+        if (filters.vendorId)
             where.vendorId = filters.vendorId;
-        }
         if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
             where.price = {};
             if (filters.minPrice !== undefined)
@@ -267,9 +266,8 @@ class MarketplaceService {
         const sortBy = filters.sortBy || 'createdAt';
         const sortOrder = filters.sortOrder || 'desc';
         const where = { vendorId: vendor.id };
-        if (filters.category) {
+        if (filters.category)
             where.category = filters.category;
-        }
         if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
             where.price = {};
             if (filters.minPrice !== undefined)
@@ -343,9 +341,7 @@ class MarketplaceService {
         if (!vendor) {
             throw new Error('Vendor profile not found');
         }
-        const orders = await prisma_1.default.order.count({
-            where: { produceId }
-        });
+        const orders = await prisma_1.default.order.count({ where: { produceId } });
         if (orders > 0) {
             throw new Error('Cannot delete produce with existing orders');
         }
@@ -392,11 +388,7 @@ class MarketplaceService {
             subtotal: item.produce.price * item.quantity,
         }));
         const totalPrice = items.reduce((sum, item) => sum + item.subtotal, 0);
-        const response = {
-            items,
-            totalItems: items.length,
-            totalPrice,
-        };
+        const response = { items, totalItems: items.length, totalPrice };
         await redis_cache_service_1.default.setFast(cacheKey, response, 120);
         return response;
     }
@@ -422,11 +414,7 @@ class MarketplaceService {
         }
         else {
             await prisma_1.default.cartItem.create({
-                data: {
-                    userId,
-                    produceId: data.produceId,
-                    quantity: data.quantity
-                }
+                data: { userId, produceId: data.produceId, quantity: data.quantity }
             });
         }
         await redis_cache_service_1.default.del(`marketplace:cart:${userId}`);
@@ -447,25 +435,18 @@ class MarketplaceService {
             if (cartItem.produce.availableQuantity < quantity) {
                 throw new Error('Insufficient quantity available');
             }
-            await prisma_1.default.cartItem.update({
-                where: { id: itemId },
-                data: { quantity }
-            });
+            await prisma_1.default.cartItem.update({ where: { id: itemId }, data: { quantity } });
         }
         await redis_cache_service_1.default.del(`marketplace:cart:${userId}`);
         return this.getCart(userId);
     }
     static async removeFromCart(userId, itemId) {
-        await prisma_1.default.cartItem.deleteMany({
-            where: { id: itemId, userId }
-        });
+        await prisma_1.default.cartItem.deleteMany({ where: { id: itemId, userId } });
         await redis_cache_service_1.default.del(`marketplace:cart:${userId}`);
         return this.getCart(userId);
     }
     static async clearCart(userId) {
-        await prisma_1.default.cartItem.deleteMany({
-            where: { userId }
-        });
+        await prisma_1.default.cartItem.deleteMany({ where: { userId } });
         await redis_cache_service_1.default.del(`marketplace:cart:${userId}`);
         return { items: [], totalItems: 0, totalPrice: 0 };
     }
@@ -495,9 +476,7 @@ class MarketplaceService {
                     include: {
                         vendor: {
                             include: {
-                                user: {
-                                    select: { name: true }
-                                }
+                                user: { select: { name: true } }
                             }
                         }
                     }
@@ -510,6 +489,18 @@ class MarketplaceService {
         });
         await prisma_1.default.cartItem.deleteMany({
             where: { userId, produceId: data.produceId }
+        });
+        const customer = await prisma_1.default.user.findUnique({
+            where: { id: userId },
+            select: { name: true }
+        });
+        await socket_service_1.default.sendOrderNotification(produce.vendorId, {
+            orderId: order.id,
+            customerName: customer?.name || 'Customer',
+            productName: produce.name,
+            quantity: data.quantity,
+            totalPrice: totalPrice,
+            timestamp: new Date()
         });
         await prisma_1.default.notification.create({
             data: {
@@ -533,9 +524,7 @@ class MarketplaceService {
             produce: {
                 id: order.produce.id,
                 name: order.produce.name,
-                vendor: {
-                    farmName: order.produce.vendor.farmName,
-                },
+                vendor: { farmName: order.produce.vendor.farmName },
             },
         };
     }
@@ -551,9 +540,8 @@ class MarketplaceService {
         const sortBy = filters.sortBy || 'orderDate';
         const sortOrder = filters.sortOrder || 'desc';
         const where = { userId };
-        if (filters.status) {
+        if (filters.status)
             where.status = filters.status;
-        }
         const [orders, total] = await Promise.all([
             prisma_1.default.order.findMany({
                 where,
@@ -563,9 +551,7 @@ class MarketplaceService {
                 include: {
                     produce: {
                         include: {
-                            vendor: {
-                                select: { farmName: true }
-                            }
+                            vendor: { select: { farmName: true } }
                         }
                     }
                 }
@@ -581,9 +567,7 @@ class MarketplaceService {
             produce: {
                 id: order.produce.id,
                 name: order.produce.name,
-                vendor: {
-                    farmName: order.produce.vendor.farmName,
-                },
+                vendor: { farmName: order.produce.vendor.farmName },
             },
         }));
         const totalPages = Math.ceil(total / limit);
@@ -612,9 +596,7 @@ class MarketplaceService {
             include: {
                 produce: {
                     include: {
-                        vendor: {
-                            select: { farmName: true }
-                        }
+                        vendor: { select: { farmName: true } }
                     }
                 }
             }
@@ -631,9 +613,7 @@ class MarketplaceService {
             produce: {
                 id: order.produce.id,
                 name: order.produce.name,
-                vendor: {
-                    farmName: order.produce.vendor.farmName,
-                },
+                vendor: { farmName: order.produce.vendor.farmName },
             },
         };
         await redis_cache_service_1.default.setFast(cacheKey, response, 300);
@@ -649,10 +629,7 @@ class MarketplaceService {
         }
         const order = await prisma_1.default.order.findFirst({
             where: { id: orderId, vendorId: vendor.id },
-            include: {
-                produce: true,
-                user: true
-            }
+            include: { produce: true, user: true }
         });
         if (!order) {
             throw new Error('Order not found');
@@ -663,13 +640,12 @@ class MarketplaceService {
             include: {
                 produce: {
                     include: {
-                        vendor: {
-                            select: { farmName: true }
-                        }
+                        vendor: { select: { farmName: true } }
                     }
                 }
             }
         });
+        await socket_service_1.default.sendOrderStatusUpdate(order.userId, orderId, data.status);
         await prisma_1.default.notification.create({
             data: {
                 userId: order.userId,
@@ -692,9 +668,7 @@ class MarketplaceService {
             produce: {
                 id: updatedOrder.produce.id,
                 name: updatedOrder.produce.name,
-                vendor: {
-                    farmName: updatedOrder.produce.vendor.farmName,
-                },
+                vendor: { farmName: updatedOrder.produce.vendor.farmName },
             },
         };
     }

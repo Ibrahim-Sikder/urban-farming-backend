@@ -11,6 +11,7 @@ const prisma_1 = __importDefault(require("../../config/prisma"));
 const redis_cache_service_1 = __importDefault(require("../../services/redis-cache.service"));
 const config_1 = require("../../config");
 const client_1 = require("@prisma/client");
+const email_service_1 = require("../../services/email.service");
 class AuthService {
     static async register(data) {
         const existingUser = await prisma_1.default.user.findUnique({
@@ -143,6 +144,72 @@ class AuthService {
             },
         };
     }
+    static async updateProfile(userId, data) {
+        const updateData = {};
+        if (data.name !== undefined && data.name !== null) {
+            updateData.name = data.name;
+        }
+        if (data.phoneNumber !== undefined && data.phoneNumber !== null) {
+            updateData.phoneNumber = data.phoneNumber;
+        }
+        if (data.address !== undefined && data.address !== null) {
+            updateData.address = data.address;
+        }
+        if (data.profileImage !== undefined && data.profileImage !== null) {
+            updateData.profileImage = data.profileImage;
+        }
+        if (Object.keys(updateData).length === 0) {
+            throw new Error('No valid fields provided for update');
+        }
+        const updatedUser = await prisma_1.default.user.update({
+            where: { id: userId },
+            data: updateData,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+                address: true,
+                profileImage: true,
+                role: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+        await redis_cache_service_1.default.del(`auth:profile:${userId}`);
+        await redis_cache_service_1.default.delPattern(`auth:profile:${userId}:*`);
+        return updatedUser;
+    }
+    static async getProfile(userId) {
+        const cacheKey = `auth:profile:${userId}`;
+        const cached = await redis_cache_service_1.default.getFast(cacheKey);
+        if (cached) {
+            console.log('📦 Returning cached profile for user:', userId);
+            return cached;
+        }
+        console.log('🔍 Fetching fresh profile for user:', userId);
+        const user = await prisma_1.default.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                status: true,
+                phoneNumber: true,
+                address: true,
+                profileImage: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+        if (!user) {
+            throw new Error('User not found');
+        }
+        await redis_cache_service_1.default.setFast(cacheKey, user, 300);
+        return user;
+    }
     static async refreshToken(refreshToken) {
         const token = await prisma_1.default.refreshToken.findFirst({
             where: {
@@ -239,11 +306,28 @@ class AuthService {
     static async forgotPassword(email, ipAddress) {
         const user = await prisma_1.default.user.findUnique({
             where: { email },
-            select: { id: true, email: true }
+            select: { id: true, email: true, name: true }
         });
-        if (user) {
-            const resetToken = crypto_1.default.randomBytes(32).toString('hex');
-            const expiresAt = new Date();
+        if (!user) {
+            console.log(`Password reset requested for non-existent email: ${email}`);
+            return { message: 'If email exists, reset link will be sent' };
+        }
+        const existingToken = await prisma_1.default.passwordResetToken.findFirst({
+            where: {
+                email: email,
+                used: false,
+                expiresAt: { gt: new Date() },
+            },
+        });
+        let resetToken;
+        let expiresAt;
+        if (existingToken) {
+            resetToken = existingToken.token;
+            expiresAt = existingToken.expiresAt;
+        }
+        else {
+            resetToken = crypto_1.default.randomBytes(32).toString('hex');
+            expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 1);
             await prisma_1.default.passwordResetToken.create({
                 data: {
@@ -253,12 +337,30 @@ class AuthService {
                     userId: user.id,
                 },
             });
-            console.log(`Password reset token for ${email}: ${resetToken}`);
-            console.log(`Reset link: ${config_1.config.appUrl}/reset-password?token=${resetToken}`);
         }
-        return { message: 'If email exists, reset link will be sent' };
+        try {
+            await email_service_1.EmailService.sendPasswordResetEmail(email, resetToken, user.name);
+            console.log(`Password reset email sent to ${email} with token: ${resetToken}`);
+        }
+        catch (emailError) {
+            console.error('Failed to send password reset email:', emailError);
+            throw new Error('Unable to send password reset email. Please try again later.');
+        }
+        await prisma_1.default.auditLog.create({
+            data: {
+                userId: user.id,
+                action: 'FORGOT_PASSWORD',
+                entity: 'User',
+                entityId: user.id,
+                ipAddress: ipAddress,
+            },
+        });
+        return { message: 'Password reset link has been sent to your email address' };
     }
     static async resetPassword(token, newPassword, ipAddress) {
+        if (newPassword.length < 8) {
+            throw new Error('Password must be at least 8 characters long');
+        }
         const resetToken = await prisma_1.default.passwordResetToken.findFirst({
             where: {
                 token: token,
@@ -267,14 +369,18 @@ class AuthService {
             },
         });
         if (!resetToken) {
-            throw new Error('Invalid or expired reset token');
+            throw new Error('Invalid or expired reset token. Please request a new password reset.');
         }
         const user = await prisma_1.default.user.findUnique({
             where: { email: resetToken.email },
-            select: { id: true }
+            select: { id: true, name: true, email: true, password: true }
         });
         if (!user) {
             throw new Error('User not found');
+        }
+        const isSamePassword = await bcryptjs_1.default.compare(newPassword, user.password);
+        if (isSamePassword) {
+            throw new Error('New password cannot be the same as the old password');
         }
         const hashedPassword = await bcryptjs_1.default.hash(newPassword, config_1.config.bcrypt.saltRounds);
         await prisma_1.default.$transaction([
@@ -291,6 +397,12 @@ class AuthService {
                 data: { revoked: true },
             }),
         ]);
+        try {
+            await email_service_1.EmailService.sendPasswordResetSuccessEmail(user.email, user.name);
+        }
+        catch (emailError) {
+            console.error('Failed to send password reset success email:', emailError);
+        }
         await prisma_1.default.auditLog.create({
             data: {
                 userId: user.id,
@@ -301,116 +413,7 @@ class AuthService {
             },
         });
         await redis_cache_service_1.default.del(`auth:profile:${user.id}`);
-        return { message: 'Password reset successfully' };
-    }
-    static async getProfile(userId) {
-        const cacheKey = `auth:profile:${userId}`;
-        const cached = await redis_cache_service_1.default.getFast(cacheKey);
-        if (cached) {
-            return cached;
-        }
-        const user = await prisma_1.default.user.findUnique({
-            where: { id: userId },
-            include: {
-                vendorProfile: {
-                    include: {
-                        produce: {
-                            take: 5,
-                            orderBy: { createdAt: 'desc' },
-                            select: {
-                                id: true,
-                                name: true,
-                                price: true,
-                                category: true,
-                                availableQuantity: true,
-                            }
-                        },
-                        rentalSpaces: {
-                            where: { availability: true },
-                            take: 5,
-                            select: {
-                                id: true,
-                                location: true,
-                                size: true,
-                                price: true,
-                            }
-                        },
-                        sustainabilityCert: true,
-                    },
-                },
-                orders: {
-                    take: 10,
-                    orderBy: { orderDate: 'desc' },
-                    include: {
-                        produce: {
-                            select: { name: true, price: true }
-                        },
-                    },
-                },
-                communityPosts: {
-                    take: 5,
-                    orderBy: { postDate: 'desc' },
-                    select: {
-                        id: true,
-                        postContent: true,
-                        postDate: true,
-                    }
-                },
-                plantTrackings: {
-                    take: 5,
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        id: true,
-                        plantName: true,
-                        healthStatus: true,
-                        growthStage: true,
-                    }
-                },
-                notifications: {
-                    where: { isRead: false },
-                    take: 10,
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        id: true,
-                        title: true,
-                        message: true,
-                        type: true,
-                        createdAt: true,
-                    }
-                },
-            },
-        });
-        if (!user) {
-            throw new Error('User not found');
-        }
-        await redis_cache_service_1.default.setFast(cacheKey, user, 300);
-        return user;
-    }
-    static async updateProfile(userId, data) {
-        const updateData = {};
-        if (data.name !== undefined)
-            updateData.name = data.name;
-        if (data.phoneNumber !== undefined)
-            updateData.phoneNumber = data.phoneNumber;
-        if (data.address !== undefined)
-            updateData.address = data.address;
-        if (data.profileImage !== undefined)
-            updateData.profileImage = data.profileImage;
-        const user = await prisma_1.default.user.update({
-            where: { id: userId },
-            data: updateData,
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                phoneNumber: true,
-                address: true,
-                profileImage: true,
-                role: true,
-            },
-        });
-        await redis_cache_service_1.default.del(`auth:profile:${userId}`);
-        return user;
+        return { message: 'Password has been reset successfully. You can now login with your new password.' };
     }
     static async getAllUsers(page = 1, limit = 10, filters) {
         const cacheKey = `auth:users:${page}:${limit}:${JSON.stringify(filters)}`;

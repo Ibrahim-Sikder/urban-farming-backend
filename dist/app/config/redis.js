@@ -23,13 +23,13 @@ class RedisConfig {
                 lazyConnect: false,
             });
             this.client.on('connect', () => {
-                console.log('✅ Redis connected successfully');
+                console.log(' Redis connected successfully');
             });
             this.client.on('error', (error) => {
                 console.error('❌ Redis connection error:', error);
             });
             this.client.on('ready', () => {
-                console.log('✅ Redis is ready to use');
+                console.log(' Redis is ready to use');
             });
         }
         return this.client;

@@ -52,6 +52,6 @@
       "@middlewares/*": ["./src/app/middlewares/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "seed/seed.ts"],
   "exclude": ["node_modules", "dist", "coverage", "prisma/**/*"]
 }

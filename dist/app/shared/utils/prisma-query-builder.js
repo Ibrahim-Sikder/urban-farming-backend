@@ -18,6 +18,24 @@ class PrismaQueryBuilder {
     sortByField = 'createdAt';
     sortOrderValue = 'desc';
     customConditions = [];
+    static VALID_COLUMNS = {
+        'PlantTracking': {
+            'healthStatus': 'healthStatus',
+            'growthStage': 'growthStage',
+            'plantType': 'plantType',
+            'userId': 'userId',
+            'id': 'id'
+        },
+        'User': {
+            'role': 'role',
+            'status': 'status'
+        },
+        'Produce': {
+            'category': 'category',
+            'vendorId': 'vendorId',
+            'certificationStatus': 'certificationStatus'
+        }
+    };
     constructor(modelName, query) {
         this.modelName = modelName;
         this.query = query;
@@ -30,9 +48,10 @@ class PrismaQueryBuilder {
         this.searchTerm = this.query.searchTerm || '';
         this.sortByField = this.query.sortBy || 'createdAt';
         this.sortOrderValue = this.query.sortOrder || 'desc';
-        const excludeKeys = ['page', 'limit', 'sortBy', 'sortOrder', 'searchTerm', 'fields', 'inStock'];
+        const validColumns = PrismaQueryBuilder.VALID_COLUMNS[this.modelName] || {};
+        const excludeKeys = ['page', 'limit', 'sortBy', 'sortOrder', 'searchTerm', 'fields'];
         Object.keys(this.query).forEach(key => {
-            if (!excludeKeys.includes(key) && this.query[key] !== undefined && this.query[key] !== '') {
+            if (!excludeKeys.includes(key) && this.query[key] !== undefined && this.query[key] !== '' && validColumns[key]) {
                 this.filters[key] = this.query[key];
             }
         });
@@ -48,15 +67,16 @@ class PrismaQueryBuilder {
             });
             conditions.push(client_1.Prisma.sql `(${client_1.Prisma.join(searchConditions, ' OR ')})`);
         }
-        const validColumns = ['category', 'vendorId', 'certificationStatus', 'status', 'userId', 'role'];
+        const validColumns = PrismaQueryBuilder.VALID_COLUMNS[this.modelName] || {};
         Object.entries(this.filters).forEach(([key, value]) => {
-            if (validColumns.includes(key) && value !== undefined && value !== null && value !== '') {
+            const dbField = validColumns[key];
+            if (dbField && value !== undefined && value !== null && value !== '') {
                 if (typeof value === 'string' && value.includes(',')) {
-                    const values = value.split(',').map((v) => `'${v.trim()}'`).join(',');
-                    conditions.push(client_1.Prisma.sql `${client_1.Prisma.raw(key)} IN (${client_1.Prisma.raw(values)})`);
+                    const values = value.split(',').map(v => `'${v.trim()}'`).join(',');
+                    conditions.push(client_1.Prisma.sql `${client_1.Prisma.raw(dbField)} IN (${client_1.Prisma.raw(values)})`);
                 }
                 else {
-                    conditions.push(client_1.Prisma.sql `${client_1.Prisma.raw(key)} = ${value}`);
+                    conditions.push(client_1.Prisma.sql `${client_1.Prisma.raw(dbField)} = ${value}`);
                 }
             }
         });
@@ -67,20 +87,8 @@ class PrismaQueryBuilder {
     }
     buildOrderByClause() {
         const direction = this.sortOrderValue === 'asc' ? 'ASC' : 'DESC';
-        const sortFieldMap = {
-            'createdAt': 'createdAt',
-            'updatedAt': 'updatedAt',
-            'name': 'name',
-            'price': 'price',
-            'status': 'status',
-            'plantName': 'plantName',
-            'plantType': 'plantType',
-            'healthStatus': 'healthStatus',
-            'growthStage': 'growthStage',
-            'orderDate': 'orderDate',
-            'totalPrice': 'totalPrice',
-        };
-        const field = sortFieldMap[this.sortByField] || 'createdAt';
+        const validSortFields = ['createdAt', 'updatedAt', 'plantName', 'healthStatus', 'growthStage', 'expectedHarvestDate'];
+        const field = validSortFields.includes(this.sortByField) ? this.sortByField : 'createdAt';
         return `ORDER BY "${field}" ${direction}`;
     }
     setSearchFields(fields) {
@@ -99,14 +107,15 @@ class PrismaQueryBuilder {
         const whereClause = this.buildWhereClause();
         const orderByClause = this.buildOrderByClause();
         const countQuery = client_1.Prisma.sql `
-            SELECT COUNT(*) as total
+            SELECT COUNT(1) as total
             FROM ${client_1.Prisma.raw(`"${this.modelName}"`)}
             WHERE ${whereClause}
         `;
         let dataQuery;
         if (customQuery) {
             const queryStr = customQuery.sql;
-            if (queryStr.includes('WHERE') && whereClause.sql !== '1=1') {
+            const hasWhere = queryStr.toUpperCase().includes('WHERE');
+            if (hasWhere && whereClause.sql !== '1=1') {
                 dataQuery = client_1.Prisma.sql `
                     ${customQuery}
                     AND ${whereClause}
@@ -164,7 +173,7 @@ class PrismaQueryBuilder {
     async getPaginationMeta() {
         const whereClause = this.buildWhereClause();
         const countQuery = client_1.Prisma.sql `
-            SELECT COUNT(*) as total
+            SELECT COUNT(1) as total
             FROM ${client_1.Prisma.raw(`"${this.modelName}"`)}
             WHERE ${whereClause}
         `;

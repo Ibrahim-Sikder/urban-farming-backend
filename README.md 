@@ -1,17 +1,6 @@
-Professional README.md File for Urban Farming Platform
-markdown
-
 # 🌱 Urban Farming Platform Backend
 
-[![Node.js Version](https://img.shields.io/badge/Node.js-20.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-5.22-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-7.0-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-[![Socket.io](https://img.shields.io/badge/Socket.io-4.8-010101?logo=socket.io&logoColor=white)](https://socket.io/)
-[![License](https://img.shields.io/badge/License-MIT- yellow.svg)](LICENSE)
-
-> **A Complete Backend Solution for Urban Farming - Connect Farmers, Gardeners, and Organic Produce Enthusiasts**
+> **A Complete Backend Solution for Urban Farming Platform** - Connect Farmers, Gardeners, and Organic Produce Enthusiasts with Real-time Features
 
 ---
 
@@ -24,34 +13,51 @@ markdown
 - [Installation & Setup](#installation--setup)
 - [Environment Variables](#environment-variables)
 - [Database Schema](#database-schema)
-- [API Documentation](#api-documentation)
-- [Real-time Events](#real-time-events-socketio)
-- [Performance Metrics](#performance-metrics)
+- [Complete API Endpoints](#complete-api-endpoints)
+- [Real-time Events (Socket.IO)](#real-time-events-socketio)
+- [Performance Optimization](#performance-optimization)
 - [Testing Credentials](#testing-credentials)
+- [API Response Format](#api-response-format)
+- [Error Handling](#error-handling)
+- [Rate Limiting](#rate-limiting)
+- [Benchmark Results](#benchmark-results)
 - [Project Structure](#project-structure)
 - [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [Submission Deliverables](#submission-deliverables)
+- [Author](#author)
+- [License](#license)
 
 ---
 
 ## 🎯 Project Overview
 
-The **Urban Farming Platform** is a comprehensive backend system designed to connect urban dwellers with local farmers, enabling:
+The **Urban Farming Platform** is a comprehensive backend system designed to bridge the gap between urban dwellers and local farming communities. This platform enables city residents to engage in sustainable agriculture through garden space rental, organic produce marketplace, plant tracking, and community knowledge sharing.
 
-- 🌾 **Garden Space Rental** - Rent plots from local farmers
-- 🛒 **Organic Marketplace** - Buy and sell fresh organic produce
-- 🌱 **Plant Tracking** - Monitor plant growth and health in real-time
-- 💬 **Community Forum** - Share gardening tips and eco-friendly practices
-- ✅ **Sustainability Certification** - Verified organic products
+### Problem Statement
 
-### 👥 User Roles
+Urban residents face multiple challenges:
+- ❌ Limited access to gardening spaces
+- ❌ Difficulty finding organic, locally-grown produce
+- ❌ Lack of knowledge about urban farming techniques
+- ❌ No connection with local farmers
+- ❌ No platform to track plant growth and health
 
-| Role         | Permissions                                                            |
-| ------------ | ---------------------------------------------------------------------- |
-| **Admin**    | Platform management, user/vendor approval, certification verification  |
-| **Vendor**   | Manage farm spaces, list products, track orders, manage certifications |
-| **Customer** | Rent spaces, purchase products, track plants, community interaction    |
+### Our Solution
+
+| Feature | Description | Benefit |
+|---------|-------------|---------|
+| 🏠 **Garden Space Rental** | Connect space owners with gardeners | Access to farming land |
+| 🛒 **Organic Marketplace** | Direct farmer-to-consumer sales | Fresh organic produce |
+| 🌱 **Plant Tracking** | Real-time growth monitoring | Better crop management |
+| 💬 **Community Forum** | Share knowledge and tips | Learn from experts |
+| ✅ **Sustainability Certification** | Verified organic products | Trust and quality |
+
+### 👥 User Roles & Permissions
+
+| Role | Icon | Permissions | Access Level |
+|------|------|-------------|--------------|
+| **Admin** | 👑 | Full platform control, user management, vendor approval, certification verification | All endpoints |
+| **Vendor** | 🏪 | Manage farm spaces, list products, track orders, submit certifications | Vendor-specific endpoints |
+| **Customer** | 👤 | Rent spaces, purchase products, track plants, community interaction | Customer-specific endpoints |
 
 ---
 
@@ -59,76 +65,54 @@ The **Urban Farming Platform** is a comprehensive backend system designed to con
 
 ### Core Modules
 
-| Module                 | Status      | Description                                       |
-| ---------------------- | ----------- | ------------------------------------------------- |
-| 🔐 **Authentication**  | ✅ Complete | JWT with refresh token, role-based access         |
-| 👤 **User Management** | ✅ Complete | Profile management, status updates                |
-| 👑 **Admin Dashboard** | ✅ Complete | Analytics, user/vendor management                 |
-| 🏪 **Marketplace**     | ✅ Complete | Products, cart, orders with real-time updates     |
-| 🏠 **Rental System**   | ✅ Complete | Space listing, booking, availability              |
-| 🌿 **Plant Tracking**  | ✅ Complete | Growth monitoring, health updates, harvest alerts |
-| 💬 **Community Forum** | ✅ Complete | Posts, comments, trending discussions             |
-| 📜 **Certification**   | ✅ Complete | Vendor organic certification verification         |
-| 🔔 **Notifications**   | ✅ Complete | Real-time alerts via WebSocket                    |
-| 📊 **Benchmark**       | ✅ Complete | API performance testing suite                     |
+| Module | Status | Description | Real-time |
+|--------|--------|-------------|-----------|
+| 🔐 **Authentication** | ✅ Complete | JWT with refresh token, role-based access | ❌ |
+| 👤 **User Management** | ✅ Complete | Profile management, status updates | ❌ |
+| 👑 **Admin Dashboard** | ✅ Complete | Analytics, user/vendor/certification management | ❌ |
+| 🛒 **Marketplace** | ✅ Complete | Products, cart, orders, inventory management | ✅ Order notifications |
+| 🏠 **Rental System** | ✅ Complete | Space listing, availability, booking management | ✅ Booking notifications |
+| 🌿 **Plant Tracking** | ✅ Complete | Growth monitoring, health updates, harvest alerts | ✅ Health alerts |
+| 💬 **Community Forum** | ✅ Complete | Posts, comments, trending discussions | ✅ Comment notifications |
+| 📜 **Certification** | ✅ Complete | Vendor organic certification verification | ✅ Status updates |
+| 🔔 **Notifications** | ✅ Complete | Real-time alerts via WebSocket | ✅ All notifications |
+| 📊 **Benchmark** | ✅ Complete | API performance testing suite | ❌ |
 
 ### Technical Features
 
-- ✅ **Real-time Updates** via Socket.IO
-- ✅ **Redis Caching** for high performance
-- ✅ **Rate Limiting** on sensitive routes
-- ✅ **Pagination** for all listings
-- ✅ **Consistent API Response Structure**
-- ✅ **Input Validation** with Zod
-- ✅ **Error Handling** with proper HTTP codes
-- ✅ **Swagger/OpenAPI Documentation**
+- ✅ **Real-time WebSocket** updates via Socket.IO
+- ✅ **Redis Caching** for sub-10ms response times
+- ✅ **Rate Limiting** on sensitive routes (5-100 req/min)
+- ✅ **Pagination** for all list endpoints (page, limit, sort)
+- ✅ **Consistent API Response** structure
+- ✅ **Input Validation** with Zod schemas
+- ✅ **Error Handling** with proper HTTP status codes
+- ✅ **Swagger/OpenAPI** documentation
+- ✅ **Database Indexes** for optimized queries
+- ✅ **Audit Logging** for security tracking
 
 ---
 
 ## 🛠 Technology Stack
 
-| Category       | Technology | Version | Purpose            |
-| -------------- | ---------- | ------- | ------------------ |
-| **Runtime**    | Node.js    | 20.x    | JavaScript runtime |
-| **Framework**  | Express.js | 4.22    | Web framework      |
-| **Language**   | TypeScript | 5.9     | Type safety        |
-| **ORM**        | Prisma     | 5.22    | Database ORM       |
-| **Database**   | PostgreSQL | 15      | Primary database   |
-| **Cache**      | Redis      | 7.0     | Caching layer      |
-| **Real-time**  | Socket.IO  | 4.8     | WebSocket server   |
-| **Auth**       | JWT        | 9.0     | Authentication     |
-| **Validation** | Zod        | 3.25    | Schema validation  |
-| **Docs**       | Swagger    | 6.2     | API documentation  |
+| Category | Technology | Version | Purpose |
+|----------|------------|---------|---------|
+| **Runtime** | Node.js | 20.x | JavaScript runtime environment |
+| **Framework** | Express.js | 4.22 | Web framework for API |
+| **Language** | TypeScript | 5.9 | Type-safe JavaScript |
+| **ORM** | Prisma | 5.22 | Database ORM and migrations |
+| **Database** | PostgreSQL | 15 | Primary relational database |
+| **Cache** | Redis | 7.0 | Caching and session storage |
+| **Real-time** | Socket.IO | 4.8 | WebSocket server |
+| **Authentication** | JWT | 9.0 | Token-based authentication |
+| **Validation** | Zod | 3.25 | Schema validation |
+| **Documentation** | Swagger | 6.2 | API documentation |
+| **Process Manager** | PM2 | 5.3 | Production process management |
 
 ---
 
 ## 🏗 Architecture
 
-┌─────────────────────────────────────────────────────────────┐
-│ Client Applications │
-└─────────────────────────────────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────────┐
-│ API Gateway Layer │
-│ (Express + Rate Limiting + Auth Middleware) │
-└─────────────────────────────────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────────┐
-│ Service Layer │
-│ Auth │ User │ Admin │ Vendor │ Marketplace │ Rental │ Plant │
-│ Community │ Notification │ Benchmark │
-└─────────────────────────────────────────────────────────────┘
-│
-┌───────────────┼───────────────┐
-▼ ▼ ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ PostgreSQL │ │ Redis │ │ Socket.IO │
-│ (Database) │ │ (Cache) │ │ (Real-time) │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-
-text
 
 ---
 
@@ -140,6 +124,8 @@ text
 Node.js (v20 or higher)
 PostgreSQL (v15 or higher)
 Redis (v7 or higher)
+npm or yarn package manager
+
 Step 1: Clone Repository
 bash
 git clone https://github.com/your-username/urban-farming-backend.git
@@ -147,433 +133,3 @@ cd urban-farming-backend
 Step 2: Install Dependencies
 bash
 npm install
-Step 3: Configure Environment
-bash
-cp .env.example .env
-# Edit .env with your database credentials
-Step 4: Setup Database
-bash
-# Run migrations
-npx prisma migrate dev --name init
-
-# Generate Prisma client
-npx prisma generate
-
-# Seed database
-npm run seed
-Step 5: Start Application
-bash
-# Development mode
-npm run dev
-
-# Production mode
-npm run build
-npm start
-Step 6: Verify Installation
-bash
-curl http://localhost:5000/
-Expected Response:
-
-json
-{
-    "status": "success",
-    "message": "Urban Farming API is running",
-    "timestamp": "2024-01-15T10:30:00.000Z"
-}
-🔧 Environment Variables
-Create a .env file in the root directory:
-
-env
-# Server Configuration
-PORT=5000
-NODE_ENV=development
-APP_URL=http://localhost:5000
-
-# Database Configuration
-DATABASE_URL="postgresql://postgres:password@localhost:5432/urban_farming"
-
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-min-32-characters
-JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
-
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:3000,http://localhost:3001
-
-# Rate Limiting
-RATE_LIMIT_WINDOW=15
-RATE_LIMIT_MAX=100
-
-# Bcrypt
-BCRYPT_SALT_ROUNDS=10
-📊 Database Schema
-Core Models
-prisma
-model User {
-  id           Int        @id @default(autoincrement())
-  name         String
-  email        String     @unique
-  password     String
-  role         Role       @default(CUSTOMER)
-  status       UserStatus @default(ACTIVE)
-  createdAt    DateTime   @default(now())
-}
-
-model VendorProfile {
-  id                  Int                 @id @default(autoincrement())
-  userId              Int                 @unique
-  farmName            String
-  certificationStatus CertificationStatus @default(PENDING)
-  farmLocation        String
-}
-
-model Produce {
-  id                  Int                 @id @default(autoincrement())
-  vendorId            Int
-  name                String
-  price               Float
-  category            String
-  availableQuantity   Int
-  certificationStatus CertificationStatus @default(PENDING)
-}
-
-model RentalSpace {
-  id           Int      @id @default(autoincrement())
-  vendorId     Int
-  location     String
-  size         Float
-  price        Float
-  availability Boolean  @default(true)
-}
-
-model Order {
-  id         Int         @id @default(autoincrement())
-  userId     Int
-  produceId  Int
-  vendorId   Int
-  quantity   Int
-  totalPrice Float
-  status     OrderStatus @default(PENDING)
-}
-
-model PlantTracking {
-  id                  Int          @id @default(autoincrement())
-  userId              Int
-  plantName           String
-  healthStatus        HealthStatus @default(HEALTHY)
-  growthStage         GrowthStage  @default(SEEDLING)
-}
-
-model CommunityPost {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  postContent String   @db.Text
-  postDate    DateTime @default(now())
-}
-
-model SustainabilityCert {
-  id                 Int                 @id @default(autoincrement())
-  vendorId           Int                 @unique
-  certifyingAgency   String
-  verificationStatus CertificationStatus @default(PENDING)
-}
-Database Migrations
-bash
-# Migration files location
-/prisma/migrations/
-
-# Run migrations
-npx prisma migrate deploy
-Seeder Data
-bash
-# Run seeder
-npm run seed
-
-# Seeder creates:
-- 3 Roles (ADMIN, VENDOR, CUSTOMER)
-- 10 Vendors with profiles
-- 100 Products (10 per vendor)
-- 50 Orders
-- 30 Rental Bookings
-- 40 Community Posts
-- 60 Plant Tracking entries
-📚 API Documentation
-Base URL
-text
-http://localhost:5000/api/v1
-API Endpoints Overview
-Module	Base URL	Description
-Auth	/auth	Authentication & user management
-User	/user	User dashboard & personal data
-Admin	/admin	Administrative operations
-Vendor	/vendor	Vendor-specific operations
-Marketplace	/marketplace	Products, cart, orders
-Rental	/rental	Space listing & booking
-Plant	/plant	Plant tracking & health
-Community	/community	Posts & comments
-Notifications	/notifications	User notifications
-Benchmark	/benchmark	Performance testing
-Response Structure
-Success Response:
-
-json
-{
-    "success": true,
-    "data": {},
-    "message": "Operation successful",
-    "timestamp": "2024-01-15T10:30:00.000Z"
-}
-Paginated Response:
-
-json
-{
-    "success": true,
-    "data": {
-        "data": [],
-        "meta": {
-            "page": 1,
-            "limit": 10,
-            "total": 100,
-            "totalPages": 10,
-            "hasNextPage": true,
-            "hasPrevPage": false
-        }
-    },
-    "message": "Data fetched successfully",
-    "timestamp": "2024-01-15T10:30:00.000Z"
-}
-Error Response:
-
-json
-{
-    "success": false,
-    "message": "Error message",
-    "timestamp": "2024-01-15T10:30:00.000Z"
-}
-Postman Collection
-Import the Postman collection from /postman folder:
-
-Collection: Urban-Farming-API.postman_collection.json
-
-Environment: Urban-Farming-API.postman_environment.json
-
-Swagger Documentation
-bash
-# Access Swagger UI
-http://localhost:5000/api-docs
-
-# JSON Spec
-http://localhost:5000/api-docs.json
-🔌 Real-time Events (Socket.IO)
-Connection
-javascript
-import { io } from 'socket.io-client';
-
-const socket = io('http://localhost:5000', {
-    auth: { token: 'your_jwt_token' }
-});
-Events
-Event	Direction	Description
-order:new	Server → Vendor	New order received
-order:status:updated	Server → Customer	Order status changed
-booking:new	Server → Vendor	New booking request
-booking:status:updated	Server → Customer	Booking status changed
-plant:health:updated	Server → Customer	Plant health alert
-plant:ready:harvest	Server → Customer	Plant ready for harvest
-comment:new	Server → Author	New comment on post
-certification:status	Server → Vendor	Certification update
-notification:new	Server → User	General notification
-Client Example
-javascript
-socket.on('order:new', (data) => {
-    console.log('New order:', data);
-    // Show notification
-});
-📊 Performance Metrics
-Benchmark Results
-Operation	Avg Time	Throughput	Rating
-CREATE_PLANT	52.81ms	18.94 ops/sec	✅ Good
-READ_PLANTS	8.9ms	112.36 ops/sec	✅ Excellent
-UPDATE_PLANT	37ms	27.03 ops/sec	✅ Good
-GET_PRODUCTS	5.6ms	178.57 ops/sec	✅ Excellent
-CREATE_ORDER	65ms	15.38 ops/sec	⚠️ Needs Optimization
-Concurrent (30 users)	123.33ms	24.32 ops/sec	✅ Good
-Cache Performance
-Overall Hit Rate: 85%
-
-Redis Response Time: <5ms
-
-Cache Invalidation: Automatic
-
-Rate Limiting
-Route	Limit
-/auth/login	5 requests/minute
-/auth/register	5 requests/minute
-/auth/forgot-password	3 requests/minute
-General APIs	100 requests/minute
-Benchmark APIs	2-5 requests/minute
-🧪 Testing Credentials
-Pre-seeded Accounts
-Role	Email	Password
-Admin	admin@urbanfarming.com	Admin@123
-Vendor	vendor1@urbanfarming.com	Vendor@123
-Customer	customer1@example.com	Customer@123
-Run Benchmark Tests
-bash
-# Login as admin
-POST /api/v1/auth/login
-{ "email": "admin@urbanfarming.com", "password": "Admin@123" }
-
-# Run full benchmark
-POST /api/v1/benchmark/full
-
-# Get report
-GET /api/v1/benchmark/report
-📁 Project Structure
-text
-urban-farming-backend/
-│
-├── src/
-│   ├── app.ts                    # Express app configuration
-│   ├── server.ts                 # Server entry point
-│   │
-│   ├── config/                   # Configuration files
-│   │   ├── index.ts             # Main config
-│   │   ├── prisma.ts            # Prisma client
-│   │   └── redis.ts             # Redis client
-│   │
-│   ├── modules/                  # Feature modules
-│   │   ├── auth/                # Authentication
-│   │   ├── user/                # User dashboard
-│   │   ├── admin/               # Admin panel
-│   │   ├── vendor/              # Vendor management
-│   │   ├── marketplace/         # Products & orders
-│   │   ├── rental/              # Space rental
-│   │   ├── plant/               # Plant tracking
-│   │   ├── community/           # Forum
-│   │   ├── notification/        # Notifications
-│   │   └── benchmark/           # Performance tests
-│   │
-│   ├── services/                 # Shared services
-│   │   ├── socket.service.ts    # WebSocket server
-│   │   └── redis-cache.service.ts
-│   │
-│   └── shared/                   # Shared utilities
-│       ├── middleware/           # Express middleware
-│       ├── utils/               # Helper functions
-│       └── types/               # Shared TypeScript types
-│
-├── prisma/
-│   ├── schema.prisma            # Database schema
-│   ├── seed.ts                  # Seeder script
-│   └── migrations/              # Database migrations
-│
-├── postman/                      # Postman collections
-├── docs/                         # Documentation
-├── .env.example                  # Environment template
-├── package.json                  # Dependencies
-├── tsconfig.json                # TypeScript config
-└── README.md                    # Documentation
-🚀 Deployment
-Docker Deployment
-bash
-# Build and run with Docker Compose
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f app
-PM2 Deployment
-bash
-# Install PM2
-npm install -g pm2
-
-# Start application
-pm2 start dist/server.js --name urban-farming
-
-# Save PM2 configuration
-pm2 save
-pm2 startup
-Environment Specific
-bash
-# Development
-npm run dev
-
-# Staging
-NODE_ENV=staging npm start
-
-# Production
-NODE_ENV=production npm start
-🔧 Troubleshooting
-Common Issues
-Issue	Solution
-Database connection failed	Check DATABASE_URL in .env
-Redis connection failed	Ensure Redis server is running
-JWT secret missing	Add JWT_SECRET to .env
-Prisma client not found	Run npx prisma generate
-Port already in use	Change PORT in .env
-Migration errors	Run npx prisma migrate reset
-Logs
-bash
-# Development logs
-npm run dev
-
-# Production logs
-pm2 logs urban-farming
-
-# Docker logs
-docker-compose logs -f app
-📋 Submission Deliverables
-#	Deliverable	Location
-1	Source Code Repository	[GitHub Link]
-2	Database Schema	/prisma/schema.prisma
-3	Migrations	/prisma/migrations/
-4	Seeder Script	/prisma/seed.ts
-5	Postman Collection	/postman/
-6	API Performance Strategy	/docs/API-Performance-Strategy.md
-7	Benchmark Report	/docs/Benchmark-Report.json
-8	Swagger Documentation	http://localhost:5000/api-docs
-📄 License
-This project is licensed under the MIT License.
-
-👨‍💻 Author
-Urban Farming Team
-
-GitHub: @yourusername
-
-Email: support@urbanfarming.com
-
-🙏 Acknowledgments
-Open source community
-
-Prisma ORM team
-
-Socket.IO team
-
-All contributors
-
-🎯 Quick Reference
-bash
-# Installation
-git clone <repo-url>
-cd urban-farming-backend
-npm install
-cp .env.example .env
-npx prisma migrate dev --name init
-npx prisma generate
-npm run seed
-npm run dev
-
-# Test API
-curl http://localhost:5000/
-
-# Access Swagger
-open http://localhost:5000/api-docs
-✅ Ready for Production | 🚀 Built with Performance | 🔒 Secure by Design
-
-```

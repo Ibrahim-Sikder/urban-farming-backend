@@ -41,15 +41,21 @@ exports.changePasswordSchema = zod_1.z.object({
 });
 exports.forgotPasswordSchema = zod_1.z.object({
     body: zod_1.z.object({
-        email: zod_1.z.string().email('Invalid email format'),
+        email: zod_1.z.string()
+            .email('Please provide a valid email address')
+            .min(1, 'Email is required'),
     }),
 });
 exports.resetPasswordSchema = zod_1.z.object({
     body: zod_1.z.object({
-        token: zod_1.z.string().min(1, 'Token is required'),
+        token: zod_1.z.string().min(1, 'Reset token is required'),
         newPassword: zod_1.z.string()
-            .min(6, 'Password must be at least 6 characters')
-            .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+            .min(8, 'Password must be at least 8 characters long')
+            .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
+        confirmPassword: zod_1.z.string().min(1, 'Please confirm your password'),
+    }).refine((data) => data.newPassword === data.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
     }),
 });
 exports.updateProfileSchema = zod_1.z.object({
