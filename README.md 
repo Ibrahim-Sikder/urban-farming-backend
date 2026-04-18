@@ -1,74 +1,77 @@
-# 🌱 Urban Farming Platform — Backend System
+# 🌱 Urban Farming Platform API
 
-> Production-ready backend for an interactive urban farming ecosystem  
-> Enabling farm rental, organic marketplace, plant tracking, and community collaboration.
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
 
----
-
-## 🎯 Overview
-
-This system connects **urban users, farmers, and eco-enthusiasts** into a unified platform where users can:
-
-- Rent farming spaces
-- Buy/sell organic produce
-- Track plant growth in real-time
-- Share knowledge via community forum
-
-👉 Built with scalability, performance, and real-world constraints in mind.
+> **Production-Ready Backend for an Interactive Urban Farming Ecosystem**  
+> Built with scalability, performance, and real-world architecture in mind.
 
 ---
 
-## 🧠 Core Capabilities
+## 🎯 What This Project Solves
 
-### 🔐 Authentication & Access Control
-- JWT + Refresh Token
-- Role-based access (Admin, Vendor, Customer)
+Urban users struggle with:
+- ❌ No access to farming space  
+- ❌ Hard to find verified organic food  
+- ❌ No plant tracking system  
+- ❌ No farmer-user connection  
 
-### 🏠 Farm Rental System
-- Location-based search
-- Booking & availability management
+### ✅ Solution
 
-### 🛒 Marketplace
-- Vendor product management
-- Order lifecycle (create → process → complete)
+A unified platform where users can:
 
-### 🌱 Plant Tracking
-- Growth stage monitoring
-- Health updates & harvest alerts (real-time)
-
-### 💬 Community Forum
-- Post, comment, and engagement system
-
-### ✅ Sustainability Verification
-- Vendor certification workflow
-- Admin validation system
+- 🏠 Rent farming spaces  
+- 🛒 Buy & sell organic produce  
+- 🌱 Track plant growth in real-time  
+- 💬 Share knowledge via community  
+- ✅ Verify sustainability certifications  
 
 ---
 
-## ⚙️ Tech Stack
+## 🚀 Key Features
 
-- **Backend:** Node.js, Express, TypeScript  
-- **Database:** PostgreSQL + Prisma  
-- **Cache:** Redis  
-- **Realtime:** Socket.IO  
-- **Validation:** Zod  
-- **Auth:** JWT  
-- **Docs:** Swagger / Postman  
-
----
-
-## 🏗 Architecture Highlights
-
-- Modular structure (feature-based modules)
-- Global error handling
-- Standardized API response format
-- Rate limiting for sensitive routes
-- Redis caching for high-frequency endpoints
-- Indexed DB queries for performance
+- 🔐 JWT Authentication + Role-based access
+- 🏪 Vendor marketplace & product management
+- 🏠 Farm rental booking system
+- 🌱 Real-time plant tracking (Socket.IO)
+- 💬 Community forum system
+- ✅ Sustainability certification workflow
+- ⚡ Redis caching + rate limiting
+- 📊 Benchmark & performance tracking
 
 ---
 
-## 🚀 Setup (Quick Start)
+## 🧠 System Design Philosophy
+
+This project is built with:
+
+- Modular architecture (feature-based)
+- Scalable API design
+- Consistent response structure
+- Production-ready patterns
+
+👉 Not just CRUD — **real backend engineering approach**
+
+---
+
+## 🛠 Tech Stack
+
+| Layer        | Technology |
+|-------------|-----------|
+| Backend     | Node.js, Express, TypeScript |
+| Database    | PostgreSQL + Prisma |
+| Cache       | Redis |
+| Realtime    | Socket.IO |
+| Auth        | JWT |
+| Validation  | Zod |
+
+
+---
+
+## ⚙️ Quick Start
 
 ```bash
 git clone https://github.com/your-username/urban-farming-backend.git
