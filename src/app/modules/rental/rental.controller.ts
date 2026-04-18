@@ -1,4 +1,4 @@
-// modules/rental/rental.controller.ts
+
 import { Request, Response } from 'express';
 import { RentalService } from './rental.service';
 import { ResponseHandler } from '../../shared/utils/response';
@@ -7,7 +7,6 @@ import { OrderStatus } from '@prisma/client';
 
 export class RentalController {
 
-    // ============ SEARCH RENTAL SPACES ============
     static async searchRentalSpaces(req: Request, res: Response): Promise<void> {
         try {
             const filters = {

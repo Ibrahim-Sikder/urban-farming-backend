@@ -8,7 +8,6 @@ import {
     PaginatedResponse
 } from '../../shared/types/common.types';
 
-// Extend common pagination params
 export interface SearchRentalSpaceInput extends PaginationParams, PriceRangeFilter, SizeRangeFilter, LocationFilter {
     availability?: boolean;
 }
@@ -28,8 +27,6 @@ export interface UpdateRentalBookingInput {
     status?: OrderStatus;
     cancellationReason?: string;
 }
-
-// Response types
 export interface RentalSpaceResponse {
     id: number;
     vendorId: number;
@@ -73,7 +70,7 @@ export interface RentalBookingResponse {
     };
 }
 
-// Paginated response types
+
 export interface PaginatedRentalSpacesResponse {
     spaces: RentalSpaceResponse[];
     meta: PaginatedResponse<any>['meta'];

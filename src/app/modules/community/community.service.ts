@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
 import socketService from '../../services/socket.service';
@@ -15,8 +14,6 @@ import {
 } from './community.type';
 
 export class CommunityService {
-
-    // ============ POST MANAGEMENT ============
 
     static async createPost(userId: number, data: CreatePostInput): Promise<PostResponse> {
         const post = await prisma.communityPost.create({
@@ -185,8 +182,6 @@ export class CommunityService {
         return { message: 'Post deleted successfully' };
     }
 
-    // ============ COMMENT MANAGEMENT (WITH SOCKET) ============
-
     static async createComment(userId: number, postId: number, data: CreateCommentInput): Promise<CommentResponse> {
         const post = await prisma.communityPost.findFirst({ where: { id: postId }, select: { id: true, userId: true } });
         if (!post) throw new Error('Post not found');
@@ -204,18 +199,13 @@ export class CommunityService {
             },
         };
 
-        // Get commenter info for notification
         const commenter = await prisma.user.findUnique({
             where: { id: userId },
             select: { name: true }
         });
-
-        // Send real-time notification to post author (if not the same person)
         if (post.userId !== userId) {
             await socketService.sendCommentNotification(post.userId, postId, commenter?.name || 'Someone');
         }
-
-        // Clear cache
         await Promise.all([
             RedisCacheService.delPattern('community:posts:*'),
             RedisCacheService.del(`community:post:${postId}`),
@@ -283,8 +273,6 @@ export class CommunityService {
 
         return { message: 'Comment deleted successfully' };
     }
-
-    // ============ GET USER POSTS ============
     static async getUserPosts(userId: number, queryParams: PostQueryParams = {}): Promise<PaginatedResponse<PostResponse>> {
         const cacheKey = `community:user:posts:${userId}:${JSON.stringify(queryParams)}`;
         const cached = await RedisCacheService.getFast<PaginatedResponse<PostResponse>>(cacheKey);
@@ -296,76 +284,4 @@ export class CommunityService {
         return result;
     }
 
-    // ============ GET TRENDING POSTS ============
-    static async getTrendingPosts(limit: number = 10): Promise<PostResponse[]> {
-        const cacheKey = `community:trending:posts`;
-        const cached = await RedisCacheService.getFast<PostResponse[]>(cacheKey);
-        if (cached) return cached;
-
-        const posts = await prisma.communityPost.findMany({
-            where: { postDate: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
-            include: {
-                user: { select: { id: true, name: true, email: true, profileImage: true } },
-                _count: { select: { comments: true } }
-            },
-            orderBy: [{ comments: { _count: 'desc' } }, { postDate: 'desc' }],
-            take: limit
-        });
-
-        const trendingPosts: PostResponse[] = posts.map(post => ({
-            id: post.id, postContent: post.postContent, postDate: post.postDate,
-            updatedAt: post.updatedAt,
-            user: {
-                id: post.user.id, name: post.user.name, email: post.user.email,
-                profileImage: post.user.profileImage || undefined,
-            },
-            commentCount: post._count.comments,
-        }));
-
-        await RedisCacheService.setFast(cacheKey, trendingPosts, 300);
-        return trendingPosts;
-    }
-
-    static async getPostsByDateRange(startDate: Date, endDate: Date, queryParams: PostQueryParams = {}): Promise<PaginatedResponse<PostResponse>> {
-        const paramsWithDate = { ...queryParams, dateFrom: startDate, dateTo: endDate };
-        return this.getAllPosts(paramsWithDate);
-    }
-
-    static async getPostStats(userId?: number): Promise<any> {
-        const cacheKey = `community:stats:${userId || 'all'}`;
-        const cached = await RedisCacheService.getFast<any>(cacheKey);
-        if (cached) return cached;
-
-        const where: any = {};
-        if (userId) where.userId = userId;
-
-        const [totalPosts, totalComments, topPosts, recentActivity] = await Promise.all([
-            prisma.communityPost.count({ where }),
-            prisma.communityComment.count({ where: userId ? { post: { userId } } : {} }),
-            prisma.communityPost.findMany({
-                where, take: 5, orderBy: { comments: { _count: 'desc' } },
-                include: { _count: { select: { comments: true } }, user: { select: { name: true, profileImage: true } } }
-            }),
-            prisma.communityPost.findMany({
-                where, take: 5, orderBy: { postDate: 'desc' },
-                include: { user: { select: { name: true, profileImage: true } } }
-            })
-        ]);
-
-        const stats = {
-            totalPosts, totalComments,
-            averageCommentsPerPost: totalPosts > 0 ? totalComments / totalPosts : 0,
-            topPosts: topPosts.map(post => ({
-                id: post.id, title: post.postContent.substring(0, 100),
-                commentCount: post._count.comments, author: post.user.name
-            })),
-            recentActivity: recentActivity.map(post => ({
-                id: post.id, title: post.postContent.substring(0, 100),
-                createdAt: post.postDate, author: post.user.name
-            }))
-        };
-
-        await RedisCacheService.setFast(cacheKey, stats, 300);
-        return stats;
-    }
 }

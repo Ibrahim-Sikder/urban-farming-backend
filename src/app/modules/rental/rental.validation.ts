@@ -1,4 +1,3 @@
-// modules/rental/rental.validation.ts
 import { z } from 'zod';
 
 export const createRentalBookingSchema = z.object({

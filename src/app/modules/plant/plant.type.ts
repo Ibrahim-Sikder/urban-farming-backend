@@ -1,7 +1,5 @@
 import { HealthStatus, GrowthStage } from '@prisma/client';
 import { PaginationParams, DateRangeFilter } from '../../shared/types/common.types';
-
-// Extend common pagination params
 export interface PlantQueryParams extends PaginationParams {
     healthStatus?: HealthStatus;
     growthStage?: GrowthStage;
@@ -46,5 +44,4 @@ export interface PlantResponse {
     createdAt: Date;
 }
 
-// Re-export common types for convenience
 export { PaginatedResponse } from '../../shared/types/common.types';

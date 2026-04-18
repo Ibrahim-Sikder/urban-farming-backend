@@ -1,22 +1,19 @@
-// modules/rental/rental.service.ts
-import { Prisma, OrderStatus } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 import RedisCacheService from '../../services/redis-cache.service';
 import socketService from '../../services/socket.service';
 import {
     CreateRentalBookingInput,
-    UpdateRentalBookingInput,
-    SearchRentalSpaceInput,
     GetUserBookingsInput,
-    RentalSpaceResponse,
-    RentalBookingResponse,
+    PaginatedBookingsResponse,
     PaginatedRentalSpacesResponse,
-    PaginatedBookingsResponse
+    RentalBookingResponse,
+    RentalSpaceResponse,
+    SearchRentalSpaceInput
 } from './rental.type';
 
 export class RentalService {
 
-    // ============ SEARCH RENTAL SPACES ============
     static async searchRentalSpaces(filters: SearchRentalSpaceInput): Promise<PaginatedRentalSpacesResponse> {
         try {
             const cacheKey = `rental:spaces:${JSON.stringify(filters)}`;
@@ -30,53 +27,42 @@ export class RentalService {
             const limit = Math.min(50, filters.limit || 10);
             const skip = (page - 1) * limit;
 
-            // Build where clause
             const where: Prisma.RentalSpaceWhereInput = {
                 availability: filters.availability !== undefined ? filters.availability : true
             };
 
-            // Location search with partial matching (case insensitive)
             if (filters.location && filters.location.trim()) {
                 where.location = {
                     contains: filters.location.trim(),
                     mode: 'insensitive'
                 };
-                console.log(`📍 Searching for location: ${filters.location}`);
             }
 
-            // Size range filter
             if (filters.minSize !== undefined || filters.maxSize !== undefined) {
                 where.size = {};
                 if (filters.minSize !== undefined) {
                     where.size.gte = filters.minSize;
-                    console.log(`📏 Min size: ${filters.minSize}`);
                 }
                 if (filters.maxSize !== undefined) {
                     where.size.lte = filters.maxSize;
-                    console.log(`📏 Max size: ${filters.maxSize}`);
                 }
             }
 
-            // Price range filter
+
             if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
                 where.price = {};
                 if (filters.minPrice !== undefined) {
                     where.price.gte = filters.minPrice;
-                    console.log(`💰 Min price: ${filters.minPrice}`);
                 }
                 if (filters.maxPrice !== undefined) {
                     where.price.lte = filters.maxPrice;
-                    console.log(`💰 Max price: ${filters.maxPrice}`);
                 }
             }
 
-            // Get sort order
+
             const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
             const sortBy = filters.sortBy || 'createdAt';
 
-            console.log(`📊 Sorting by: ${sortBy} ${sortOrder}`);
-
-            // Execute queries with Prisma
             const [spaces, total] = await Promise.all([
                 prisma.rentalSpace.findMany({
                     where,
@@ -100,7 +86,6 @@ export class RentalService {
                 prisma.rentalSpace.count({ where })
             ]);
 
-            console.log(`✅ Found ${total} rental spaces matching criteria`);
 
             const transformedSpaces: RentalSpaceResponse[] = spaces.map(space => ({
                 id: space.id,
@@ -139,7 +124,6 @@ export class RentalService {
             await RedisCacheService.setFast(cacheKey, response, 300);
             return response;
         } catch (error: any) {
-            console.error('Error in searchRentalSpaces:', error);
             throw new Error(error.message || 'Failed to search rental spaces');
         }
     }
@@ -200,20 +184,16 @@ export class RentalService {
             await RedisCacheService.setFast(cacheKey, response, 300);
             return response;
         } catch (error: any) {
-            console.error('Error in getRentalSpaceById:', error);
             throw new Error(error.message || 'Failed to fetch rental space');
         }
     }
 
-    // ============ CREATE RENTAL BOOKING ============
     static async createBooking(userId: number, data: CreateRentalBookingInput): Promise<RentalBookingResponse> {
         try {
-            // Validate dates
             if (data.startDate >= data.endDate) {
                 throw new Error('End date must be after start date');
             }
 
-            // Get rental space with vendor info
             const space = await prisma.rentalSpace.findFirst({
                 where: {
                     id: data.spaceId,
@@ -239,7 +219,6 @@ export class RentalService {
                 throw new Error('Rental space not available');
             }
 
-            // Check for overlapping bookings
             const overlappingBooking = await prisma.rentalBooking.findFirst({
                 where: {
                     spaceId: data.spaceId,
@@ -264,8 +243,6 @@ export class RentalService {
             if (overlappingBooking) {
                 throw new Error('Space already booked for selected dates');
             }
-
-            // Create booking using Prisma
             const booking = await prisma.rentalBooking.create({
                 data: {
                     spaceId: data.spaceId,
@@ -300,7 +277,6 @@ export class RentalService {
                 }
             });
 
-            // Send real-time notification to vendor via Socket.IO
             await socketService.sendBookingNotification(space.vendor.user.id, {
                 bookingId: booking.id,
                 spaceId: data.spaceId,
@@ -310,7 +286,6 @@ export class RentalService {
                 timestamp: new Date()
             });
 
-            // Create database notification for vendor
             await prisma.notification.create({
                 data: {
                     userId: space.vendor.user.id,
@@ -326,7 +301,6 @@ export class RentalService {
                 },
             });
 
-            // Clear caches
             await Promise.all([
                 RedisCacheService.delPattern('rental:spaces:*'),
                 RedisCacheService.delPattern(`rental:bookings:user:${userId}:*`),
@@ -358,12 +332,10 @@ export class RentalService {
 
             return response;
         } catch (error: any) {
-            console.error('Error in createBooking:', error);
             throw new Error(error.message || 'Failed to create booking');
         }
     }
 
-    // ============ GET USER BOOKINGS ============
     static async getUserBookings(userId: number, filters: GetUserBookingsInput = {}): Promise<PaginatedBookingsResponse> {
         try {
             const cacheKey = `rental:bookings:user:${userId}:${JSON.stringify(filters)}`;
@@ -377,7 +349,6 @@ export class RentalService {
             const limit = Math.min(50, filters.limit || 10);
             const skip = (page - 1) * limit;
 
-            // Build where clause
             const where: Prisma.RentalBookingWhereInput = {
                 userId: userId
             };
@@ -386,11 +357,8 @@ export class RentalService {
                 where.status = filters.status;
             }
 
-            // Get sort order
             const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
             const sortBy = filters.sortBy || 'orderDate';
-
-            // Execute queries with Prisma
             const [bookings, total] = await Promise.all([
                 prisma.rentalBooking.findMany({
                     where,
@@ -458,7 +426,6 @@ export class RentalService {
             await RedisCacheService.setFast(cacheKey, response, 120);
             return response;
         } catch (error: any) {
-            console.error('Error in getUserBookings:', error);
             throw new Error(error.message || 'Failed to fetch bookings');
         }
     }
@@ -526,12 +493,9 @@ export class RentalService {
             await RedisCacheService.setFast(cacheKey, response, 300);
             return response;
         } catch (error: any) {
-            console.error('Error in getBookingById:', error);
             throw new Error(error.message || 'Failed to fetch booking');
         }
     }
-
-    // ============ CANCEL BOOKING ============
     static async cancelBooking(userId: number, bookingId: number, reason?: string): Promise<{ message: string }> {
         try {
             const booking = await prisma.rentalBooking.findFirst({
@@ -569,16 +533,12 @@ export class RentalService {
                 throw new Error('Booking already cancelled');
             }
 
-            // Update booking status
             await prisma.rentalBooking.update({
                 where: { id: bookingId },
                 data: { status: OrderStatus.CANCELLED }
             });
 
-            // Send real-time notification to vendor via Socket.IO
             await socketService.sendBookingStatusUpdate(booking.space.vendor.user.id, bookingId, OrderStatus.CANCELLED);
-
-            // Create database notification for vendor
             await prisma.notification.create({
                 data: {
                     userId: booking.space.vendor.user.id,
@@ -593,7 +553,6 @@ export class RentalService {
                 },
             });
 
-            // Clear caches
             await Promise.all([
                 RedisCacheService.delPattern('rental:spaces:*'),
                 RedisCacheService.delPattern(`rental:bookings:user:${userId}:*`),
@@ -603,12 +562,9 @@ export class RentalService {
 
             return { message: 'Booking cancelled successfully' };
         } catch (error: any) {
-            console.error('Error in cancelBooking:', error);
             throw new Error(error.message || 'Failed to cancel booking');
         }
     }
-
-    // ============ VENDOR BOOKINGS ============
     static async getVendorBookings(vendorUserId: number, filters: GetUserBookingsInput = {}): Promise<PaginatedBookingsResponse> {
         try {
             const cacheKey = `rental:vendor:bookings:${vendorUserId}:${JSON.stringify(filters)}`;
@@ -618,7 +574,6 @@ export class RentalService {
                 return cached;
             }
 
-            // Get vendor profile
             const vendor = await prisma.vendorProfile.findUnique({
                 where: { userId: vendorUserId },
                 select: { id: true }
@@ -632,7 +587,6 @@ export class RentalService {
             const limit = Math.min(50, filters.limit || 10);
             const skip = (page - 1) * limit;
 
-            // Build where clause for bookings
             const where: Prisma.RentalBookingWhereInput = {
                 space: {
                     vendorId: vendor.id
@@ -643,11 +597,9 @@ export class RentalService {
                 where.status = filters.status;
             }
 
-            // Get sort order
             const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
             const sortBy = filters.sortBy || 'orderDate';
 
-            // Execute queries with Prisma
             const [bookings, total] = await Promise.all([
                 prisma.rentalBooking.findMany({
                     where,
@@ -714,19 +666,16 @@ export class RentalService {
             await RedisCacheService.setFast(cacheKey, response, 120);
             return response;
         } catch (error: any) {
-            console.error('Error in getVendorBookings:', error);
             throw new Error(error.message || 'Failed to fetch vendor bookings');
         }
     }
 
-    // ============ UPDATE BOOKING STATUS (VENDOR) ============
     static async updateBookingStatus(
         vendorUserId: number,
         bookingId: number,
         status: OrderStatus
     ): Promise<{ message: string }> {
         try {
-            // Verify vendor owns this booking's space
             const booking = await prisma.rentalBooking.findFirst({
                 where: {
                     id: bookingId,
@@ -759,16 +708,12 @@ export class RentalService {
                 throw new Error('Cannot modify completed booking');
             }
 
-            // Update booking status
             await prisma.rentalBooking.update({
                 where: { id: bookingId },
                 data: { status: status }
             });
 
-            // Send notification to customer
             await socketService.sendBookingStatusUpdate(booking.user.id, bookingId, status);
-
-            // Create notification for customer
             await prisma.notification.create({
                 data: {
                     userId: booking.user.id,
@@ -782,7 +727,6 @@ export class RentalService {
                 },
             });
 
-            // Clear caches
             await Promise.all([
                 RedisCacheService.delPattern(`rental:bookings:user:${booking.user.id}:*`),
                 RedisCacheService.delPattern(`rental:vendor:bookings:${vendorUserId}:*`),
@@ -791,7 +735,6 @@ export class RentalService {
 
             return { message: `Booking ${status.toLowerCase()} successfully` };
         } catch (error: any) {
-            console.error('Error in updateBookingStatus:', error);
             throw new Error(error.message || 'Failed to update booking status');
         }
     }

@@ -12,8 +12,6 @@ import {
 } from './plant.type';
 
 export class PlantService {
-
-    // ============ CREATE PLANT ============
     static async createPlant(userId: number, data: CreatePlantInput): Promise<PlantResponse> {
         const plant = await prisma.plantTracking.create({
             data: {
@@ -28,14 +26,12 @@ export class PlantService {
             },
         });
 
-        // Clear all plant-related caches for this user
         await RedisCacheService.clearUserPaginatedCache('plants', userId);
         await RedisCacheService.delete('plants:stats', userId);
 
         return plant as PlantResponse;
     }
 
-    // ============ GET USER PLANTS WITH PAGINATION ============
     static async getUserPlants(
         userId: number,
         queryParams: PlantQueryParams
@@ -69,7 +65,6 @@ export class PlantService {
         return result;
     }
 
-    // ============ GET ALL PLANTS (ADMIN) ============
     static async getAllPlants(queryParams: PlantQueryParams): Promise<PaginatedResult<PlantResponse>> {
         const cached = await RedisCacheService.getPaginated<PaginatedResult<PlantResponse>>(
             'plants:all',
@@ -98,8 +93,6 @@ export class PlantService {
 
         return result;
     }
-
-    // ============ GET PLANT BY ID ============
     static async getPlantById(userId: number, plantId: number): Promise<PlantResponse> {
         const cached = await RedisCacheService.get<PlantResponse>('plant', `${userId}:${plantId}`);
         if (cached) {
@@ -124,7 +117,6 @@ export class PlantService {
         return plant[0];
     }
 
-    // ============ UPDATE PLANT ============
     static async updatePlant(userId: number, plantId: number, data: UpdatePlantInput): Promise<PlantResponse> {
         const existing = await this.getPlantById(userId, plantId);
         if (!existing) {
@@ -144,7 +136,6 @@ export class PlantService {
             data: updateData,
         });
 
-        // Clear all related caches
         await Promise.all([
             RedisCacheService.clearUserPaginatedCache('plants', userId),
             RedisCacheService.delete('plant', `${userId}:${plantId}`),
@@ -153,8 +144,6 @@ export class PlantService {
 
         return updated as PlantResponse;
     }
-
-    // ============ UPDATE HEALTH STATUS (WITH SOCKET) ============
     static async updateHealthStatus(userId: number, plantId: number, data: UpdateHealthStatusInput): Promise<PlantResponse> {
         const plant = await prisma.plantTracking.findFirst({
             where: { id: plantId, userId },
@@ -174,7 +163,6 @@ export class PlantService {
             },
         });
 
-        // Send real-time plant update via Socket.IO
         await socketService.sendPlantUpdate(userId, {
             plantId,
             plantName: plant.plantName,
@@ -184,12 +172,10 @@ export class PlantService {
             timestamp: new Date()
         });
 
-        // Send harvest ready notification
         if (data.healthStatus === 'HARVEST_READY') {
             await socketService.sendPlantReadyForHarvest(userId, plantId, plant.plantName);
         }
 
-        // Clear caches
         await Promise.all([
             RedisCacheService.clearUserPaginatedCache('plants', userId),
             RedisCacheService.delete('plant', `${userId}:${plantId}`),
@@ -199,7 +185,6 @@ export class PlantService {
         return updated as PlantResponse;
     }
 
-    // ============ MARK AS HARVESTED ============
     static async markAsHarvested(userId: number, plantId: number): Promise<PlantResponse> {
         const plant = await prisma.plantTracking.findFirst({
             where: { id: plantId, userId },
@@ -218,11 +203,8 @@ export class PlantService {
                 growthStage: 'HARVESTING',
             },
         });
-
-        // Send harvest notification
         await socketService.sendNotification(userId, 'Plant Harvested', `${plant.plantName} has been harvested successfully!`, 'PLANT_HARVEST');
 
-        // Clear caches
         await Promise.all([
             RedisCacheService.clearUserPaginatedCache('plants', userId),
             RedisCacheService.delete('plant', `${userId}:${plantId}`),
@@ -232,7 +214,6 @@ export class PlantService {
         return updated as PlantResponse;
     }
 
-    // ============ DELETE PLANT ============
     static async deletePlant(userId: number, plantId: number): Promise<{ message: string }> {
         await prisma.plantTracking.delete({ where: { id: plantId } });
 
@@ -245,7 +226,6 @@ export class PlantService {
         return { message: 'Plant deleted successfully' };
     }
 
-    // ============ GET PLANT STATISTICS ============
     static async getPlantStats(userId: number): Promise<any> {
         const cached = await RedisCacheService.get('plants:stats', userId);
         if (cached) {

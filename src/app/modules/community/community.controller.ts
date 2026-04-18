@@ -5,8 +5,6 @@ import { AuthRequest } from '../../shared/middleware/auth';
 
 export class CommunityController {
 
-    // ============ POST CONTROLLERS ============
-
     static async createPost(req: AuthRequest, res: Response): Promise<void> {
         try {
             const post = await CommunityService.createPost(req.user!.id, req.body);
@@ -80,18 +78,6 @@ export class CommunityController {
             ResponseHandler.error(res, error.message, 400);
         }
     }
-
-    static async getTrendingPosts(req: Request, res: Response): Promise<void> {
-        try {
-            const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-            const posts = await CommunityService.getTrendingPosts(limit);
-            ResponseHandler.success(res, posts, 'Trending posts fetched successfully');
-        } catch (error: any) {
-            ResponseHandler.error(res, error.message, 400);
-        }
-    }
-
-    // ============ COMMENT CONTROLLERS ============
 
     static async createComment(req: AuthRequest, res: Response): Promise<void> {
         try {

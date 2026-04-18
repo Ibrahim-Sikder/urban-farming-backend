@@ -1,4 +1,4 @@
-// modules/community/community.validation.ts
+
 import { z } from 'zod';
 
 export const createPostSchema = z.object({
